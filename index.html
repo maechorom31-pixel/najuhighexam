@@ -201,14 +201,7 @@
     <!-- 반 선택 화면 -->
     <div class="selector" id="selector" style="display:none">
       <div class="selabel">반을 선택하세요</div>
-      <div class="clsgrid">
-        <a class="clsbtn" href="?class=1">1반</a>
-        <a class="clsbtn" href="?class=2">2반</a>
-        <a class="clsbtn" href="?class=3">3반</a>
-        <a class="clsbtn" href="?class=4">4반</a>
-        <a class="clsbtn" href="?class=5">5반</a>
-        <a class="clsbtn" href="?class=6">6반</a>
-      </div>
+      <div class="clsgrid" id="clsgrid"></div>
     </div>
 
     <!-- 조회 화면 (반 선택 후) -->
@@ -270,8 +263,19 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"></script>
   <script>
     const $ = (id) => document.getElementById(id);
-    const DATA_VER = "1";        // data/cN.js 캐시 버전
+    const DATA_VER = "1";        // data/*.js 캐시 버전
     let CLASS = null, CLASS_PREFIX = null, STUDENTS = {};
+
+    // 반 ↔ 무작위 토큰 매핑 (URL에는 토큰만 노출되어 몇 반인지 추측 불가)
+    const CLASSES = [
+      {n:1, k:"566f8cb7"},
+      {n:2, k:"f980d51e"},
+      {n:3, k:"1fe051a1"},
+      {n:4, k:"041ce67a"},
+      {n:5, k:"4f428556"},
+      {n:6, k:"85f010ac"},
+    ];
+    const TOKEN2CLASS = Object.fromEntries(CLASSES.map(o => [o.k, o.n]));
 
     // 과목 분류 조회 (띄어쓰기 차이도 허용)
     function categoryOf(name){
@@ -290,23 +294,33 @@
       }catch(e){ return {}; }
     }
 
-    // 시작: ?class=N (또는 ?sid=3NKK) 로 반 결정
+    // 시작: ?k=<무작위 토큰> 으로 반 결정 (반 번호는 URL에 노출되지 않음)
     function start(){
-      const params = new URLSearchParams(location.search);
-      let cls = parseInt(params.get("class") || "", 10);
-      const psid = params.get("sid");
-      if(!(cls >= 1 && cls <= 6) && psid && /^3[1-6]\d\d$/.test(psid)) cls = parseInt(psid[1], 10);
-
-      if(cls >= 1 && cls <= 6){
+      const k = new URLSearchParams(location.search).get("k");
+      const cls = k && TOKEN2CLASS[k];
+      if(cls){
         const s = document.createElement("script");
-        s.src = `data/c${cls}.js?v=${DATA_VER}`;
+        s.src = `data/${encodeURIComponent(k)}.js?v=${DATA_VER}`;
         s.onload = () => initApp(cls);
         s.onerror = () => { $("subtitle").textContent = "데이터를 불러오지 못했어요. 새로고침 해주세요."; };
         document.head.appendChild(s);
       } else {
+        buildSelector();
         $("selector").style.display = "block";
         $("subtitle").textContent = "우리 반을 선택하세요";
       }
+    }
+
+    function buildSelector(){
+      const grid = $("clsgrid");
+      grid.innerHTML = "";
+      CLASSES.forEach(o => {
+        const a = document.createElement("a");
+        a.className = "clsbtn";
+        a.href = "?k=" + o.k;
+        a.textContent = o.n + "반";
+        grid.appendChild(a);
+      });
     }
 
     function initApp(cls){
@@ -337,11 +351,8 @@
         window.scrollTo({top:0, behavior:"smooth"});
       });
 
-      // 딥링크: ?num=K 또는 ?sid=3NKK
-      const params = new URLSearchParams(location.search);
-      let pre = params.get("num");
-      const psid = params.get("sid");
-      if(!pre && psid && psid.startsWith(CLASS_PREFIX)) pre = String(parseInt(psid.slice(2), 10));
+      // 딥링크: ?k=<토큰>&num=K
+      const pre = new URLSearchParams(location.search).get("num");
       if(pre){ $("num").value = pre.replace(/[^0-9]/g, ""); lookup($("num").value); }
       else { $("num").focus(); }
     }
