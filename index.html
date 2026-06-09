@@ -4,8 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#4b6ef5" />
-<meta name="description" content="나주고등학교 3학년 1반 기말고사 시간표 — 번호 입력 시 응시 과목만 조회" />
-<title>나주고 3-1 기말고사 시간표</title>
+<meta name="description" content="나주고등학교 3학년 기말고사 시간표 — 반·번호 입력 시 응시 과목만 조회" />
+<title>나주고 3학년 기말고사 시간표</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
 <style>
@@ -46,10 +46,30 @@
   header.top h1{font-size:clamp(20px,5.6vw,24px); margin:12px 0 5px; font-weight:800;}
   header.top p{margin:0; color:var(--muted); font-size:clamp(12.5px,3.4vw,13.5px);}
 
+  /* 반 선택 화면 */
+  .selector{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:20px 18px; box-shadow:0 8px 24px rgba(40,55,90,.07);
+  }
+  .selector .selabel{font-size:14px; font-weight:700; color:#56607a; text-align:center; margin-bottom:14px;}
+  .clsgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
+  .clsbtn{
+    display:flex; align-items:center; justify-content:center; text-decoration:none;
+    padding:18px 0; border-radius:13px; font-size:17px; font-weight:800; color:var(--ink);
+    background:linear-gradient(180deg,#fbfcff,#f3f6ff); border:1.5px solid var(--line);
+    transition:.13s;
+  }
+  .clsbtn:hover{border-color:var(--accent); color:var(--accent); transform:translateY(-1px); box-shadow:0 6px 14px rgba(75,110,245,.15);}
+  .clsbtn:active{transform:translateY(0);}
+
   .search{
     background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
     padding:18px; box-shadow:0 8px 24px rgba(40,55,90,.07);
   }
+  .backrow{display:flex; align-items:center; justify-content:space-between; margin-bottom:13px;}
+  .back{font-size:13px; font-weight:700; color:var(--accent); text-decoration:none;}
+  .back:hover{text-decoration:underline;}
+  .classlabel{font-size:13px; font-weight:800; color:#56607a;}
   .search label{display:block; font-size:13px; font-weight:600; color:#56607a; margin-bottom:9px;}
   .idrow{display:flex; gap:9px; align-items:stretch;}
   .idgroup{
@@ -119,6 +139,8 @@
   .daycell.d1{box-shadow:inset 4px 0 0 #46b387;}
   .daycell.d2{box-shadow:inset 4px 0 0 #e0a23c;}
   .daycell.d3{box-shadow:inset 4px 0 0 #ab78e0;}
+  /* 날짜가 바뀌는 지점의 은은한 구분선 (첫 날 제외) */
+  tbody tr.day-start:not(:first-child) > td{border-top:2px solid #e4e9f2;}
   .pcell{color:#6a748c; font-size:12px; white-space:nowrap;}
   .timecell{color:#9aa2b6; font-size:11px; white-space:nowrap; font-variant-numeric:tabular-nums;}
   .subj{font-weight:700; font-size:clamp(13px,3.6vw,14px);}
@@ -161,7 +183,7 @@
   }
   @media print{
     body{background:#fff;}
-    .search,.actions,.foot,header.top .badge,header.top p{display:none !important;}
+    .search,.selector,.actions,.foot,header.top .badge,header.top p{display:none !important;}
     .wrap{max-width:none; padding:0;}
     .card{border:none; box-shadow:none;}
     #result{animation:none;}
@@ -172,49 +194,69 @@
   <div class="wrap">
     <header class="top">
       <span class="badge">2026학년도 1학기 기말고사</span>
-      <h1>📋 나주고 3학년 1반 시험 시간표</h1>
-      <p>번호를 입력하면 내 시험만 골라서 보여줘요</p>
+      <h1 id="title">📋 나주고 3학년 시험 시간표</h1>
+      <p id="subtitle">우리 반을 선택하세요</p>
     </header>
 
-    <div class="search">
-      <label for="num">번호 입력</label>
-      <div class="idrow">
-        <div class="idgroup">
-          <span class="prefix">31</span>
-          <input id="num" inputmode="numeric" maxlength="2" placeholder="번호" autocomplete="off" aria-label="3학년 1반 번호 (1~19)" />
-        </div>
-        <button id="go">조회</button>
+    <!-- 반 선택 화면 -->
+    <div class="selector" id="selector" style="display:none">
+      <div class="selabel">반을 선택하세요</div>
+      <div class="clsgrid">
+        <a class="clsbtn" href="?class=1">1반</a>
+        <a class="clsbtn" href="?class=2">2반</a>
+        <a class="clsbtn" href="?class=3">3반</a>
+        <a class="clsbtn" href="?class=4">4반</a>
+        <a class="clsbtn" href="?class=5">5반</a>
+        <a class="clsbtn" href="?class=6">6반</a>
       </div>
-      <div class="hint">우리 반 번호만 입력하세요 (1 ~ 19)</div>
-      <div class="err" id="err"></div>
     </div>
 
-    <div id="result">
-      <div class="card" id="card">
-        <div class="chead">
-          <div class="t">2026학년도 1학기 기말고사 · 3학년 1반</div>
-          <div class="sid" id="r-sid"></div>
-          <span class="sum" id="r-sum"></span>
+    <!-- 조회 화면 (반 선택 후) -->
+    <div id="app" style="display:none">
+      <div class="search">
+        <div class="backrow">
+          <a class="back" href="./">← 반 다시 선택</a>
+          <span class="classlabel" id="classlabel"></span>
         </div>
-        <div class="legend">
-          <span class="lg"><i class="dot general"></i>일반선택</span>
-          <span class="lg"><i class="dot career"></i>진로선택</span>
-          <span class="lg"><i class="dot free"></i>자율학습</span>
+        <label for="num">번호 입력</label>
+        <div class="idrow">
+          <div class="idgroup">
+            <span class="prefix" id="prefix">3</span>
+            <input id="num" inputmode="numeric" maxlength="2" placeholder="번호" autocomplete="off" aria-label="반 번호" />
+          </div>
+          <button id="go">조회</button>
         </div>
-        <table>
-          <thead>
-            <tr><th>날짜</th><th>교시</th><th>시간</th><th>과목</th></tr>
-          </thead>
-          <tbody id="r-body"></tbody>
-        </table>
-        <div class="cfoot">
-          <span>표시되지 않은 시간은 자율학습(시험 없음)</span>
-        </div>
+        <div class="hint" id="hint">우리 반 번호를 입력하세요</div>
+        <div class="err" id="err"></div>
       </div>
-      <div class="actions">
-        <button class="primary" id="saveImg">🖼️ 이미지 저장</button>
-        <button id="print">🖨️ 인쇄 / PDF</button>
-        <button id="reset">↺ 다시</button>
+
+      <div id="result">
+        <div class="card" id="card">
+          <div class="chead">
+            <div class="t" id="r-head">2026학년도 1학기 기말고사</div>
+            <div class="sid" id="r-sid"></div>
+            <span class="sum" id="r-sum"></span>
+          </div>
+          <div class="legend">
+            <span class="lg"><i class="dot general"></i>일반선택</span>
+            <span class="lg"><i class="dot career"></i>진로선택</span>
+            <span class="lg"><i class="dot free"></i>자율학습</span>
+          </div>
+          <table>
+            <thead>
+              <tr><th>날짜</th><th>교시</th><th>시간</th><th>과목</th></tr>
+            </thead>
+            <tbody id="r-body"></tbody>
+          </table>
+          <div class="cfoot">
+            <span>표시되지 않은 시간은 자율학습(시험 없음)</span>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="primary" id="saveImg">🖼️ 이미지 저장</button>
+          <button id="print">🖨️ 인쇄 / PDF</button>
+          <button id="reset">↺ 다시</button>
+        </div>
       </div>
     </div>
 
@@ -225,22 +267,11 @@
   </div>
 
   <script src="schedule.js?v=4"></script>
-  <script src="roster.js?v=4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"></script>
   <script>
     const $ = (id) => document.getElementById(id);
-    const CLASS_PREFIX = "31"; // 3학년 1반
-
-    // 명단 데이터는 인코딩된 단일 파일(roster.js)을 한 번만 복호화해서 사용합니다.
-    function loadRoster(){
-      try{
-        if(typeof ROSTER_ENC === "undefined") return {};
-        const bin = atob(ROSTER_ENC);
-        const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
-        return JSON.parse(new TextDecoder("utf-8").decode(bytes));
-      }catch(e){ return {}; }
-    }
-    const STUDENTS = loadRoster();
+    const DATA_VER = "1";        // data/cN.js 캐시 버전
+    let CLASS = null, CLASS_PREFIX = null, STUDENTS = {};
 
     // 과목 분류 조회 (띄어쓰기 차이도 허용)
     function categoryOf(name){
@@ -251,22 +282,82 @@
       return null;
     }
 
+    function decodeRoster(){
+      try{
+        if(typeof window.ROSTER_ENC === "undefined") return {};
+        const bytes = Uint8Array.from(atob(window.ROSTER_ENC), c => c.charCodeAt(0));
+        return JSON.parse(new TextDecoder("utf-8").decode(bytes));
+      }catch(e){ return {}; }
+    }
+
+    // 시작: ?class=N (또는 ?sid=3NKK) 로 반 결정
+    function start(){
+      const params = new URLSearchParams(location.search);
+      let cls = parseInt(params.get("class") || "", 10);
+      const psid = params.get("sid");
+      if(!(cls >= 1 && cls <= 6) && psid && /^3[1-6]\d\d$/.test(psid)) cls = parseInt(psid[1], 10);
+
+      if(cls >= 1 && cls <= 6){
+        const s = document.createElement("script");
+        s.src = `data/c${cls}.js?v=${DATA_VER}`;
+        s.onload = () => initApp(cls);
+        s.onerror = () => { $("subtitle").textContent = "데이터를 불러오지 못했어요. 새로고침 해주세요."; };
+        document.head.appendChild(s);
+      } else {
+        $("selector").style.display = "block";
+        $("subtitle").textContent = "우리 반을 선택하세요";
+      }
+    }
+
+    function initApp(cls){
+      CLASS = cls;
+      CLASS_PREFIX = "3" + cls;
+      STUDENTS = decodeRoster();
+
+      $("title").textContent = `📋 나주고 3학년 ${cls}반 시험 시간표`;
+      $("subtitle").textContent = "번호를 입력하면 내 시험만 골라서 보여줘요";
+      $("prefix").textContent = CLASS_PREFIX;
+      $("classlabel").textContent = `3학년 ${cls}반`;
+      $("r-head").textContent = `2026학년도 1학기 기말고사 · 3학년 ${cls}반`;
+
+      const nums = Object.keys(STUDENTS).map(k => parseInt(k.slice(2), 10)).filter(n => !isNaN(n));
+      const maxNum = nums.length ? Math.max(...nums) : 0;
+      $("hint").textContent = `우리 반 번호를 입력하세요 (1 ~ ${maxNum})`;
+
+      $("app").style.display = "block";
+
+      $("go").addEventListener("click", () => lookup($("num").value));
+      $("num").addEventListener("keydown", e => { if(e.key === "Enter") lookup($("num").value); });
+      $("num").addEventListener("input", e => { e.target.value = e.target.value.replace(/[^0-9]/g, ""); });
+      $("saveImg").addEventListener("click", saveImage);
+      $("print").addEventListener("click", () => window.print());
+      $("reset").addEventListener("click", () => {
+        $("result").style.display = "none";
+        $("num").value = ""; $("num").focus();
+        window.scrollTo({top:0, behavior:"smooth"});
+      });
+
+      // 딥링크: ?num=K 또는 ?sid=3NKK
+      const params = new URLSearchParams(location.search);
+      let pre = params.get("num");
+      const psid = params.get("sid");
+      if(!pre && psid && psid.startsWith(CLASS_PREFIX)) pre = String(parseInt(psid.slice(2), 10));
+      if(pre){ $("num").value = pre.replace(/[^0-9]/g, ""); lookup($("num").value); }
+      else { $("num").focus(); }
+    }
+
     function lookup(numStr){
       const err = $("err");
       err.style.display = "none";
-      const n = parseInt((numStr||"").trim(), 10);
+      const n = parseInt((numStr || "").trim(), 10);
       if(!Number.isInteger(n) || n < 1 || n > 99){
-        err.textContent = "번호를 입력하세요 (1 ~ 19).";
-        err.style.display = "block";
-        return;
+        err.textContent = "번호를 입력해 주세요."; err.style.display = "block"; return;
       }
       const sid = CLASS_PREFIX + String(n).padStart(2, "0");
       const taken = STUDENTS[sid];
       if(!taken){
-        err.textContent = `${n}번은 명단에 없어요. 1~19번 중에서 입력해 주세요.`;
-        err.style.display = "block";
-        $("result").style.display = "none";
-        return;
+        err.textContent = `${n}번은 우리 반 명단에 없어요.`;
+        err.style.display = "block"; $("result").style.display = "none"; return;
       }
       render(sid, n, new Set(taken));
     }
@@ -289,7 +380,7 @@
           if(isExam) examCount++;
 
           const tr = document.createElement("tr");
-          tr.className = isExam ? "exam" : "free";
+          tr.className = (isExam ? "exam" : "free") + (idx === 0 ? " day-start" : "");
 
           if(idx === 0){
             const td = document.createElement("td");
@@ -323,7 +414,7 @@
         });
       });
 
-      $("r-sid").textContent = `3학년 1반 ${num}번`;
+      $("r-sid").textContent = `3학년 ${CLASS}반 ${num}번`;
       $("r-sum").textContent = `학번 ${sid} · 응시 과목 총 ${examCount}개`;
       $("result").style.display = "block";
       $("result").scrollIntoView({behavior:"smooth", block:"start"});
@@ -337,7 +428,7 @@
       }
       html2canvas(card, {scale:2, backgroundColor:"#ffffff", useCORS:true}).then(canvas => {
         const link = document.createElement("a");
-        link.download = `기말고사_${$("num").value || "3-1"}.png`;
+        link.download = `기말고사_3-${CLASS}_${$("num").value || ""}.png`;
         link.href = canvas.toDataURL("image/png");
         link.click();
       }).catch(() => {
@@ -345,24 +436,7 @@
       });
     }
 
-    $("go").addEventListener("click", () => lookup($("num").value));
-    $("num").addEventListener("keydown", e => { if(e.key === "Enter") lookup($("num").value); });
-    $("num").addEventListener("input", e => { e.target.value = e.target.value.replace(/[^0-9]/g, ""); });
-    $("saveImg").addEventListener("click", saveImage);
-    $("print").addEventListener("click", () => window.print());
-    $("reset").addEventListener("click", () => {
-      $("result").style.display = "none";
-      $("num").value = "";
-      $("num").focus();
-      window.scrollTo({top:0, behavior:"smooth"});
-    });
-
-    // 딥링크: ?num=5 또는 ?sid=3105
-    const params = new URLSearchParams(location.search);
-    let pre = params.get("num");
-    const psid = params.get("sid");
-    if(!pre && psid && psid.startsWith(CLASS_PREFIX)) pre = String(parseInt(psid.slice(2), 10));
-    if(pre){ $("num").value = pre.replace(/[^0-9]/g, ""); lookup($("num").value); }
+    start();
   </script>
 </body>
 </html>
