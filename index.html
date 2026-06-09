@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>나주고 3학년 기말고사 시간표 조회</title>
+<style>
+  :root{
+    --bg:#f4f6fb; --card:#ffffff; --line:#e2e6ee; --ink:#1f2430; --muted:#7a8294;
+    --accent:#3a6df0; --accent-soft:#eaf0ff; --exam:#fff5e6; --exam-line:#ffd9a0;
+    --self:#eef7ee; --self-line:#bfe3bf; --common:#eef0ff;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,-apple-system,sans-serif;
+    line-height:1.45; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:560px; margin:0 auto; padding:20px 16px 60px;}
+  header.top{text-align:center; margin-bottom:18px;}
+  header.top h1{font-size:20px; margin:0 0 4px;}
+  header.top p{margin:0; color:var(--muted); font-size:13px;}
+
+  .search{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:16px; box-shadow:0 1px 3px rgba(20,30,60,.05);
+  }
+  .search label{display:block; font-size:13px; color:var(--muted); margin-bottom:8px;}
+  .row{display:flex; gap:8px;}
+  .row input{
+    flex:1; font-size:18px; letter-spacing:2px; text-align:center;
+    padding:12px 10px; border:1px solid var(--line); border-radius:10px;
+    outline:none; background:#fff;
+  }
+  .row input:focus{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft);}
+  .row button{
+    padding:0 18px; font-size:15px; font-weight:600; color:#fff;
+    background:var(--accent); border:none; border-radius:10px; cursor:pointer;
+  }
+  .row button:active{transform:translateY(1px);}
+  .hint{margin-top:8px; font-size:12px; color:var(--muted);}
+  .err{margin-top:10px; color:#d9453d; font-size:13px; display:none;}
+
+  /* 결과 카드 (이미지/인쇄 대상) */
+  #result{margin-top:18px; display:none;}
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    overflow:hidden; box-shadow:0 1px 3px rgba(20,30,60,.05);
+  }
+  .card .chead{
+    padding:14px 16px; background:linear-gradient(135deg,#3a6df0,#5b86f5); color:#fff;
+  }
+  .card .chead .t{font-size:13px; opacity:.9;}
+  .card .chead .sid{font-size:24px; font-weight:700; letter-spacing:1px;}
+  .card .chead .sum{font-size:12px; opacity:.92; margin-top:2px;}
+
+  table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  thead th{
+    background:#f7f9fd; color:var(--muted); font-weight:600; font-size:12px;
+    padding:8px 6px; border-bottom:1px solid var(--line);
+  }
+  tbody td{padding:10px 6px; border-bottom:1px solid var(--line); text-align:center; vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  .daycell{font-weight:700; white-space:nowrap; background:#fafbff;}
+  .daycell small{display:block; font-weight:400; color:var(--muted); font-size:11px;}
+  .timecell{color:var(--muted); font-size:11.5px; white-space:nowrap;}
+  .pcell{color:var(--muted); font-size:12px; white-space:nowrap;}
+  .subj{font-weight:600;}
+  .subj .tag{
+    display:inline-block; font-size:10px; font-weight:700; padding:1px 6px; border-radius:6px;
+    margin-left:5px; vertical-align:middle;
+  }
+  .tag.common{background:var(--common); color:#3a52c0;}
+  .tag.pick{background:var(--exam); color:#c47a16; border:1px solid var(--exam-line);}
+  tr.exam td.subj-td{background:#fffdf8;}
+  tr.free td.subj-td{color:#b3bac8;}
+  tr.free .subj{font-weight:400;}
+
+  .actions{display:flex; gap:8px; margin-top:12px;}
+  .actions button{
+    flex:1; padding:12px; font-size:14px; font-weight:600; border-radius:10px;
+    border:1px solid var(--line); background:#fff; color:var(--ink); cursor:pointer;
+  }
+  .actions button.primary{background:var(--accent); color:#fff; border-color:var(--accent);}
+  .actions button:active{transform:translateY(1px);}
+
+  .foot{margin-top:14px; text-align:center; font-size:11px; color:var(--muted);}
+
+  @media print{
+    body{background:#fff;}
+    .search,.actions,.foot,header.top p{display:none !important;}
+    .wrap{max-width:none; padding:0;}
+    .card{border:none; box-shadow:none;}
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <h1>📋 나주고 3학년 기말고사</h1>
+      <p>학번을 입력하면 내 시험 시간표가 나옵니다</p>
+    </header>
+
+    <div class="search">
+      <label for="sid">학번 입력</label>
+      <div class="row">
+        <input id="sid" inputmode="numeric" maxlength="4" placeholder="예: 3201" autocomplete="off" />
+        <button id="go">조회</button>
+      </div>
+      <div class="hint">3학년 학번 4자리 (예: 3201, 3614)</div>
+      <div class="err" id="err"></div>
+    </div>
+
+    <div id="result">
+      <div class="card" id="card">
+        <div class="chead">
+          <div class="t">2026학년도 1학기 기말고사 · 3학년</div>
+          <div class="sid" id="r-sid"></div>
+          <div class="sum" id="r-sum"></div>
+        </div>
+        <table>
+          <thead>
+            <tr><th>날짜</th><th>교시</th><th>시간</th><th>과목</th></tr>
+          </thead>
+          <tbody id="r-body"></tbody>
+        </table>
+      </div>
+      <div class="actions">
+        <button class="primary" id="saveImg">🖼️ 이미지 저장</button>
+        <button id="print">🖨️ 인쇄 / PDF</button>
+        <button id="reset">↺ 다시</button>
+      </div>
+    </div>
+
+    <div class="foot">표시되지 않은 선택과목 시간은 <b>자율학습</b>(시험 없음)입니다.</div>
+  </div>
+
+  <script src="schedule.js"></script>
+  <script src="students.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    function lookup(sid){
+      const err = $("err");
+      err.style.display = "none";
+      sid = (sid||"").trim();
+      if(!/^\d{4}$/.test(sid)){
+        err.textContent = "학번 4자리를 정확히 입력하세요.";
+        err.style.display = "block";
+        return;
+      }
+      const taken = STUDENTS[sid];
+      if(!taken){
+        err.textContent = "해당 학번을 찾을 수 없습니다. (3학년 학번인지 확인하세요)";
+        err.style.display = "block";
+        $("result").style.display = "none";
+        return;
+      }
+      render(sid, new Set(taken));
+    }
+
+    function render(sid, takenSet){
+      const body = $("r-body");
+      body.innerHTML = "";
+      let examCount = 0;
+
+      SCHEDULE.forEach(day => {
+        day.periods.forEach((p, idx) => {
+          // 이 교시에 내가 보는 과목 결정
+          let mySubject = null, kind = null;
+          if(p.type === "common"){
+            mySubject = p.subjects[0]; kind = "common";
+          } else {
+            const hit = p.subjects.find(s => takenSet.has(s));
+            if(hit){ mySubject = hit; kind = "pick"; }
+          }
+          const isExam = mySubject !== null;
+          if(isExam) examCount++;
+
+          const tr = document.createElement("tr");
+          tr.className = isExam ? "exam" : "free";
+
+          // 날짜 셀: 그 날의 첫 행에만 rowspan
+          if(idx === 0){
+            const td = document.createElement("td");
+            td.className = "daycell";
+            td.rowSpan = day.periods.length;
+            td.innerHTML = `${day.date}<small>(${day.dow})</small>`;
+            tr.appendChild(td);
+          }
+          const tdP = document.createElement("td");
+          tdP.className = "pcell";
+          tdP.textContent = p.no + "교시";
+          tr.appendChild(tdP);
+
+          const tdT = document.createElement("td");
+          tdT.className = "timecell";
+          tdT.textContent = p.time;
+          tr.appendChild(tdT);
+
+          const tdS = document.createElement("td");
+          tdS.className = "subj-td";
+          if(isExam){
+            const tag = kind === "common"
+              ? '<span class="tag common">공통</span>'
+              : '<span class="tag pick">선택</span>';
+            tdS.innerHTML = `<span class="subj">${mySubject}</span>${tag}`;
+          } else {
+            tdS.innerHTML = `<span class="subj">자율학습</span>`;
+          }
+          tr.appendChild(tdS);
+          body.appendChild(tr);
+        });
+      });
+
+      $("r-sid").textContent = sid;
+      $("r-sum").textContent = `응시 과목 총 ${examCount}개`;
+      $("result").style.display = "block";
+      $("result").scrollIntoView({behavior:"smooth", block:"start"});
+    }
+
+    // 이미지 저장
+    function saveImage(){
+      const card = $("card");
+      if(typeof html2canvas !== "function"){
+        alert("이미지 저장 라이브러리를 불러오지 못했습니다.\n'인쇄 / PDF'를 이용하거나 화면을 캡처해 주세요.");
+        return;
+      }
+      html2canvas(card, {scale:2, backgroundColor:"#ffffff"}).then(canvas => {
+        const link = document.createElement("a");
+        link.download = `기말고사_${$("r-sid").textContent}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+      }).catch(() => {
+        alert("이미지 저장에 실패했습니다. '인쇄 / PDF'를 이용해 주세요.");
+      });
+    }
+
+    $("go").addEventListener("click", () => lookup($("sid").value));
+    $("sid").addEventListener("keydown", e => { if(e.key === "Enter") lookup($("sid").value); });
+    $("sid").addEventListener("input", e => { e.target.value = e.target.value.replace(/[^0-9]/g,""); });
+    $("saveImg").addEventListener("click", saveImage);
+    $("print").addEventListener("click", () => window.print());
+    $("reset").addEventListener("click", () => {
+      $("result").style.display = "none";
+      $("sid").value = "";
+      $("sid").focus();
+      window.scrollTo({top:0, behavior:"smooth"});
+    });
+
+    // URL ?sid=3201 지원
+    const q = new URLSearchParams(location.search).get("sid");
+    if(q){ $("sid").value = q; lookup(q); }
+  </script>
+</body>
+</html>
