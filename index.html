@@ -32,12 +32,12 @@
   }
   .wrap{
     max-width:540px; margin:0 auto;
-    padding:clamp(18px,5vw,28px) clamp(13px,4vw,16px) 48px;
+    padding:clamp(14px,4.2vw,22px) clamp(13px,4vw,16px) 44px;
     padding-left:max(clamp(13px,4vw,16px), env(safe-area-inset-left));
     padding-right:max(clamp(13px,4vw,16px), env(safe-area-inset-right));
   }
 
-  header.top{text-align:center; margin-bottom:20px;}
+  header.top{text-align:center; margin-bottom:16px;}
   header.top .badge{
     display:inline-block; font-size:12px; font-weight:700; letter-spacing:.3px;
     color:var(--accent); background:#fff; border:1px solid var(--accent-soft);
@@ -97,14 +97,14 @@
   .hint{margin-top:10px; font-size:12px; color:var(--muted);}
   .err{margin-top:11px; color:#e0483e; font-size:13px; font-weight:600; display:none;}
 
-  #result{margin-top:20px; display:none; animation:rise .28s ease;}
+  #result{margin-top:16px; display:none; animation:rise .28s ease;}
   @keyframes rise{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:none;}}
   .card{
     background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
     overflow:hidden; box-shadow:0 14px 36px rgba(40,55,90,.12);
   }
   .card .chead{
-    padding:18px 18px 16px; color:#fff; position:relative;
+    padding:15px 18px 13px; color:#fff; position:relative;
     background:linear-gradient(135deg,#4b6ef5 0%,#7a5cf0 100%);
   }
   .card .chead .t{font-size:12px; font-weight:600; opacity:.92; letter-spacing:.2px;}
@@ -117,7 +117,7 @@
 
   .legend{
     display:flex; gap:14px; justify-content:center; flex-wrap:wrap;
-    padding:9px 12px; background:#fff; border-bottom:1px solid var(--line);
+    padding:7px 12px; background:#fff; border-bottom:1px solid var(--line);
     font-size:11.5px; color:#6a748c; font-weight:600;
   }
   .legend .lg{display:inline-flex; align-items:center; gap:5px;}
@@ -131,7 +131,7 @@
     background:#f8fafe; color:#8b93a7; font-weight:700; font-size:11.5px; letter-spacing:.3px;
     padding:9px 6px; border-bottom:1px solid var(--line);
   }
-  tbody td{padding:clamp(9px,2.6vw,11px) clamp(4px,1.6vw,6px); border-bottom:1px solid #eef1f6; text-align:center; vertical-align:middle;}
+  tbody td{padding:clamp(5px,1.6vw,7px) clamp(4px,1.6vw,6px); border-bottom:1px solid #eef1f6; text-align:center; vertical-align:middle; line-height:1.3;}
   tbody tr:last-child td{border-bottom:none;}
   .daycell{font-weight:800; white-space:nowrap; background:#fafbff; border-right:1px solid #eef1f6; font-size:14px;}
   .daycell small{display:block; font-weight:500; color:var(--muted); font-size:11px; margin-top:1px;}
@@ -152,8 +152,9 @@
   .tag.career{background:var(--pick); color:var(--pick-ink);}
   tr.exam td.subj-td{background:linear-gradient(90deg,#f1f5ff,#ffffff); box-shadow:inset 3px 0 0 var(--accent);}
   tr.free td.subj-td .subj{font-weight:500; color:#bcc3d2;}
-  .room{margin-top:3px; font-size:11.5px; font-weight:700; color:#3a52c0; white-space:nowrap;}
+  .room{margin-top:2px; font-size:11px; font-weight:700; color:#3a52c0; white-space:nowrap;}
   .room.free{color:#aeb6c6; font-weight:500;}
+  .room.inline{display:inline; margin:0 0 0 5px;}
 
   .cfoot{
     display:flex; justify-content:center; align-items:center;
@@ -418,7 +419,7 @@
             const tag = cat ? `<span class="tag ${cls}">${cat}</span>` : "";
             tdS.innerHTML = `<span class="subj">${mySubject}</span>${tag}<div class="room">🏫 ${room}</div>`;
           } else {
-            tdS.innerHTML = `<span class="subj">자율학습</span><div class="room free">📍 ${room}</div>`;
+            tdS.innerHTML = `<span class="subj">자율학습</span><span class="room free inline">📍 ${room}</span>`;
           }
           tr.appendChild(tdS);
           body.appendChild(tr);
