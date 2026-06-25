@@ -152,7 +152,8 @@
   .tag.career{background:var(--pick); color:var(--pick-ink);}
   tr.exam td.subj-td{background:linear-gradient(90deg,#f1f5ff,#ffffff); box-shadow:inset 3px 0 0 var(--accent);}
   tr.free td.subj-td .subj{font-weight:500; color:#bcc3d2;}
-  tr.free td.subj-td .free-note{font-size:11px; color:#cbd1de; margin-left:2px;}
+  .room{margin-top:3px; font-size:11.5px; font-weight:700; color:#3a52c0; white-space:nowrap;}
+  .room.free{color:#aeb6c6; font-weight:500;}
 
   .cfoot{
     display:flex; justify-content:center; align-items:center;
@@ -263,7 +264,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"></script>
   <script>
     const $ = (id) => document.getElementById(id);
-    const DATA_VER = "1";        // data/*.js 캐시 버전
+    const DATA_VER = "2";        // data/*.js 캐시 버전
     let CLASS = null, CLASS_PREFIX = null, STUDENTS = {};
 
     // 반 ↔ 무작위 토큰 매핑 (URL에는 토큰만 노출되어 몇 반인지 추측 불가)
@@ -329,7 +330,7 @@
       STUDENTS = decodeRoster();
 
       $("title").textContent = `📋 나주고 3학년 ${cls}반 시험 시간표`;
-      $("subtitle").textContent = "번호를 입력하면 내 시험만 골라서 보여줘요";
+      $("subtitle").textContent = "번호를 입력하면 내 시험 과목·시험실을 보여줘요";
       $("prefix").textContent = CLASS_PREFIX;
       $("classlabel").textContent = `3학년 ${cls}반`;
       $("r-head").textContent = `2026학년도 1학기 기말고사 · 3학년 ${cls}반`;
@@ -365,27 +366,26 @@
         err.textContent = "번호를 입력해 주세요."; err.style.display = "block"; return;
       }
       const sid = CLASS_PREFIX + String(n).padStart(2, "0");
-      const taken = STUDENTS[sid];
-      if(!taken){
+      const pmap = STUDENTS[sid];
+      if(!pmap){
         err.textContent = `${n}번은 우리 반 명단에 없어요.`;
         err.style.display = "block"; $("result").style.display = "none"; return;
       }
-      render(sid, n, new Set(taken));
+      render(sid, n, pmap);
     }
 
-    function render(sid, num, takenSet){
+    function render(sid, num, pmap){
       const body = $("r-body");
       body.innerHTML = "";
       let examCount = 0;
 
       SCHEDULE.forEach((day, di) => {
         day.periods.forEach((p, idx) => {
-          let mySubject = null;
-          if(p.type === "common"){
-            mySubject = p.subjects[0];
-          } else {
-            const hit = p.subjects.find(s => takenSet.has(s));
-            if(hit){ mySubject = hit; }
+          const entry = pmap[`${day.date} ${p.no}`];      // [과목, 시험실] 또는 ["자습", 자습실]
+          let mySubject = null, room = "각 반 교실";
+          if(entry){
+            if(entry[0] === "자습"){ room = entry[1]; }
+            else { mySubject = entry[0]; room = entry[1]; }
           }
           const isExam = mySubject !== null;
           if(isExam) examCount++;
@@ -416,9 +416,9 @@
             const cat = categoryOf(mySubject);
             const cls = cat === "일반선택" ? "general" : "career";
             const tag = cat ? `<span class="tag ${cls}">${cat}</span>` : "";
-            tdS.innerHTML = `<span class="subj">${mySubject}</span>${tag}`;
+            tdS.innerHTML = `<span class="subj">${mySubject}</span>${tag}<div class="room">🏫 ${room}</div>`;
           } else {
-            tdS.innerHTML = `<span class="subj">자율학습</span><span class="free-note">· 시험 없음</span>`;
+            tdS.innerHTML = `<span class="subj">자율학습</span><div class="room free">📍 ${room}</div>`;
           }
           tr.appendChild(tdS);
           body.appendChild(tr);
