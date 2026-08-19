@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#FAF9F7" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23FAF9F7'/%3E%3Cpath d='M16 5 L21 16 L16 27 L11 16 Z' fill='%23F59E0B'/%3E%3C/svg%3E" />
+<meta name="description" content="목표 수능 등급을 넣으면 대학별 수능 반영 방법으로 환산해 지원 가능선을 짚어 주는 정시 탐색 도구" />
+<title>정시 나침반 — 목표 등급으로 지원 가능선 살펴보기</title>
+<style>
+  :root{
+    --bg:#FAF9F7; --surface:#FFFFFF; --line:#E8E6E2; --line-strong:#D8D5CF;
+    --ink:#1A1A1A; --ink2:#2B2B2B; --muted:#6B6B6B;
+    --amber:#F59E0B; --amber-soft:#FEF3C7; --amber-mid:#FCD9A0; --amber-ink:#B45309;
+    --err:#9F2D20;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--ink);
+    min-height:100vh; min-height:100dvh;
+    font-family:"Pretendard",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    font-size:15px; line-height:1.65; letter-spacing:-0.005em;
+    word-break:keep-all; overflow-wrap:break-word; overflow-wrap:anywhere;
+    -webkit-text-size-adjust:100%; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1120px; margin:0 auto; padding:32px 24px 64px;}
+
+  h1{font-size:26px; line-height:1.3; font-weight:700; margin:0 0 8px;}
+  h2{font-size:19px; line-height:1.3; font-weight:700; margin:0 0 12px;}
+  h3{font-size:15px; line-height:1.35; font-weight:600; margin:0 0 8px;}
+  p{margin:0 0 12px; max-width:44em;}
+  .lede{color:var(--muted); font-size:14px; margin:0;}
+  .num{font-variant-numeric:tabular-nums;}
+
+  /* ---------- 카드 ---------- */
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:20px 20px 24px;}
+  .card + .card{margin-top:24px;}
+  section{margin-top:40px;}
+  section:first-of-type{margin-top:28px;}
+
+  /* ---------- 성적 입력 ---------- */
+  .scores{display:grid; grid-template-columns:repeat(auto-fit,minmax(212px,1fr)); grid-gap:16px 20px;}
+  .field label{display:block; font-size:13px; font-weight:600; color:var(--ink2); margin-bottom:6px;}
+  .field .ctl > * + *{margin-top:6px;}
+  .staticline{font-size:13px; color:var(--muted); padding:10px 2px 9px; line-height:1.4;}
+  .field .sub{font-weight:400; color:var(--muted);}
+  select,input[type=text],input[type=number]{
+    width:100%; font-family:inherit; font-size:16px; line-height:1.4;
+    padding:9px 10px; border:1px solid var(--line-strong); border-radius:6px;
+    background:var(--surface); color:var(--ink); -webkit-appearance:none; appearance:none;
+  }
+  select:focus,input:focus{outline:2px solid var(--amber-ink); outline-offset:1px;}
+  .duo{display:grid; grid-template-columns:1fr 1fr; grid-gap:6px;}
+  .hint{font-size:12px; color:var(--muted); margin-top:5px; font-variant-numeric:tabular-nums;}
+
+  /* ---------- 요약 ---------- */
+  .summary{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); grid-gap:1px; background:var(--line); border:1px solid var(--line); border-radius:10px; overflow:hidden; margin-top:24px;}
+  .summary div{background:var(--surface); padding:14px 16px 16px;}
+  .summary dt{font-size:12px; color:var(--muted); margin-bottom:2px;}
+  .summary dd{margin:0; font-size:21px; font-weight:700; font-variant-numeric:tabular-nums;}
+  .summary dd small{font-size:13px; font-weight:400; color:var(--muted);}
+
+  /* ---------- 탭 ---------- */
+  .tabs{border-bottom:1px solid var(--line); margin-bottom:24px;}
+  .tabs button{
+    font-family:inherit; font-size:15px; font-weight:600; color:var(--muted);
+    background:none; border:none; border-bottom:2px solid transparent;
+    padding:10px 2px 9px; margin:0 24px 0 0; cursor:pointer;
+  }
+  .tabs button[aria-selected=true]{color:var(--ink); border-bottom-color:var(--amber);}
+  .tabs button:focus-visible{outline:2px solid var(--amber-ink); outline-offset:2px;}
+
+  /* ---------- 필터 ---------- */
+  .filters{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); grid-gap:12px; margin-bottom:8px;}
+  .chips{margin-top:12px;}
+  .chips span.lab{font-size:12px; color:var(--muted); margin-right:8px;}
+  .chip{
+    display:inline-block; font-family:inherit; font-size:13px; font-weight:600;
+    padding:5px 11px; margin:0 6px 6px 0; border-radius:999px;
+    border:1px solid var(--line-strong); background:var(--surface); color:var(--ink2); cursor:pointer;
+  }
+  .chip[aria-pressed=true]{background:var(--amber-soft); border-color:var(--amber); color:#1A1A1A;}
+  .chip:focus-visible{outline:2px solid var(--amber-ink); outline-offset:1px;}
+  .toggles{margin-top:12px; font-size:13px; color:var(--ink2);}
+  .toggles label{margin-right:20px; white-space:nowrap;}
+  .toggles input{margin-right:5px; width:auto;}
+
+  /* ---------- 표 ---------- */
+  .tablewrap{overflow-x:auto; border:1px solid var(--line); border-radius:10px; background:var(--surface); margin-top:20px;}
+  table{border-collapse:collapse; width:100%; min-width:860px; font-size:13.5px;}
+  th,td{padding:9px 10px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;}
+  thead th{
+    font-size:12px; font-weight:600; color:var(--muted); white-space:nowrap;
+    background:var(--surface); border-bottom:1px solid var(--line-strong); position:sticky; top:0; z-index:10;
+  }
+  thead th.sortable{cursor:pointer;}
+  thead th.sortable[aria-sort]{color:var(--ink);}
+  td.n,th.n{text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr.det td{background:#FCFBF9; border-top:none; position:static;}
+  thead th:nth-child(1),tbody tr.main td:nth-child(1){position:sticky; left:0; z-index:11; background:var(--surface); width:38px; min-width:38px;}
+  thead th:nth-child(2),tbody tr.main td:nth-child(2){position:sticky; left:38px; z-index:11; background:var(--surface); min-width:86px;}
+  thead th:nth-child(1),thead th:nth-child(2){z-index:21;}
+  .uni{font-weight:600; white-space:nowrap;}
+  .major{color:var(--ink2);}
+  .rowbtn{
+    font-family:inherit; font-size:13.5px; font-weight:600; color:var(--amber-ink);
+    background:none; border:none; padding:0; cursor:pointer; text-align:left;
+  }
+  .rowbtn:focus-visible{outline:2px solid var(--amber-ink); outline-offset:2px;}
+
+  /* 판정: 색 대신 5칸 게이지 + 글자 */
+  td .lv0,td .lv1,td .lv2,td .lv3,td .lv4{white-space:nowrap;}
+  .gauge{display:inline-block; vertical-align:-1px; margin-right:6px; white-space:nowrap;}
+  .gauge i{display:inline-block; width:5px; height:11px; margin-right:2px; background:var(--line); border-radius:1px;}
+  .gauge i.on{background:var(--amber);}
+  .lv-name{font-weight:600;}
+  .lv0 .lv-name{color:var(--err);}
+
+  .tag{display:inline-block; font-size:11.5px; font-weight:600; padding:2px 7px; border-radius:4px;
+       background:var(--amber-soft); color:#1A1A1A; margin:0 4px 3px 0; white-space:nowrap;}
+  .tag.plain{background:#F2F0EC; color:var(--ink2);}
+  .warn{color:var(--err); font-weight:600;}
+
+  .det dl{display:grid; grid-template-columns:max-content 1fr; grid-gap:4px 16px; margin:0 0 12px; font-size:13px;}
+  .det dt{color:var(--muted);}
+  .det dd{margin:0;}
+  .det .memo{font-size:12.5px; color:var(--ink2); margin:0 0 6px; max-width:60em;}
+
+  .more{margin-top:16px; text-align:center;}
+  .btn{
+    font-family:inherit; font-size:14px; font-weight:600; color:#1A1A1A;
+    background:var(--amber-soft); border:1px solid var(--amber); border-radius:6px;
+    padding:9px 20px; cursor:pointer;
+  }
+  .btn:active{transform:scale(0.98);}
+  .btn:focus-visible{outline:2px solid var(--amber-ink); outline-offset:2px;}
+  .empty{padding:36px 20px; text-align:center; color:var(--muted); font-size:14px;}
+  .note{font-size:12.5px; color:var(--muted); margin-top:12px;}
+
+  /* 유리한 대학 카드 */
+  .rank{display:grid; grid-template-columns:repeat(auto-fill,minmax(258px,1fr)); grid-gap:16px; margin-top:20px;}
+  .rankcard{border:1px solid var(--line); border-radius:10px; padding:16px 16px 18px; background:var(--surface);}
+  .rankcard h3{margin:0 0 2px; font-size:16px;}
+  .rankcard .gainv{font-size:24px; font-weight:700; font-variant-numeric:tabular-nums; margin:8px 0 2px;}
+  .rankcard .gainl{font-size:12px; color:var(--muted); margin:0 0 12px;}
+  .rankcard ul{margin:0; padding:0; list-style:none; font-size:12.5px; color:var(--ink2);}
+  .rankcard li{padding:3px 0; border-top:1px solid var(--line);}
+  .rankcard li:first-child{border-top:none;}
+
+  footer{margin-top:56px; padding-top:20px; border-top:1px solid var(--line); font-size:12.5px; color:var(--muted);}
+  footer p{max-width:52em;}
+  a{color:var(--amber-ink);}
+
+  @media (hover:hover){
+    .chip:hover{border-color:var(--amber);}
+    .btn:hover{background:var(--amber-mid);}
+    tbody tr.main:hover td{background:#FCFBF9;}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none !important; animation:none !important;}}
+  @media (max-width:640px){
+    .wrap{padding:24px 16px 48px;}
+    h1{font-size:22px;}
+    .summary dd{font-size:19px;}
+    .tabs button{font-size:14px; margin-right:16px;}
+  }
+  @media print{
+    .noprint{display:none !important;}
+    body{background:#fff; color:#000;}
+    .tablewrap{overflow:visible; border:none;}
+    table{min-width:0; font-size:10.5px;}
+    thead th{position:static; color:#000;}
+    tbody tr{page-break-inside:avoid; break-inside:avoid;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1><span style="display:inline-block">정시 나침반</span> <span style="display:inline-block">— 목표 등급으로 지원 가능선&nbsp;살펴보기</span></h1>
+    <p class="lede">경기도교육청 <strong>정시NAVI</strong> 자료를 바탕으로, 목표 수능 등급을 넣으면
+      전국 대학이 저마다 다르게 정해 둔 수능 반영 방법으로 성적을 다시 계산해 봅니다.</p>
+  </header>
+
+  <section id="input-sec">
+    <h2>1. 목표 수능 성적</h2>
+    <div class="card">
+      <div class="scores" id="scores"></div>
+      <div class="toggles noprint" style="margin-top:20px;">
+        <label><input type="checkbox" id="usePct" /> 백분위를 직접 입력</label>
+      </div>
+      <dl class="summary" id="summary"></dl>
+    </div>
+  </section>
+
+  <section id="result-sec">
+    <h2>2. 결과 살펴보기</h2>
+
+    <div class="tabs noprint" role="tablist">
+      <button role="tab" id="tab-all" aria-selected="true">전체 탐색</button>
+      <button role="tab" id="tab-math" aria-selected="false">수학 부담 낮은 곳</button>
+      <button role="tab" id="tab-gain" aria-selected="false">잘 환산해 주는 대학</button>
+    </div>
+
+    <div class="card noprint" id="filters-card">
+      <div class="filters">
+        <div class="field">
+          <label for="f-univ">대학 이름</label>
+          <input type="text" id="f-univ" placeholder="예: 아주, 국립" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="f-unit">모집단위 이름</label>
+          <input type="text" id="f-unit" placeholder="예: 간호, 컴퓨터" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="f-min">최소 모집인원</label>
+          <select id="f-min"></select>
+        </div>
+        <div class="field">
+          <label for="f-sort">정렬 기준</label>
+          <select id="f-sort"></select>
+        </div>
+      </div>
+      <div class="chips" id="chip-zone"></div>
+      <div class="chips" id="chip-term"></div>
+      <div class="chips" id="chip-track"></div>
+      <div class="chips" id="chip-level"></div>
+      <div class="chips" id="chip-math"></div>
+      <div class="toggles">
+        <label><input type="checkbox" id="f-req" checked /> 지정과목을 채우는 곳만</label>
+        <label><input type="checkbox" id="f-cut" checked /> 입시결과가 있는 곳만</label>
+      </div>
+    </div>
+
+    <div id="view"></div>
+  </section>
+
+  <footer>
+    <p><strong>자료</strong> · 경기도교육청 진학교육지원방 정시NAVI(2026학년도 정시, 2025-12-24판). 수능 위주 전형만 담겨 있고,
+      입시결과는 대학이 공개한 2025학년도 50%·70% 컷입니다.</p>
+    <p><strong>계산 방법</strong> · 대학마다 반영 영역·비율·활용지표(표준점수/백분위/변환표준점수/등급)가 달라,
+      이 도구는 각 모집단위의 반영 방법대로 점수를 다시 계산한 뒤,
+      <em>국어·수학·탐구를 모두 같은 백분위로 받은 학생</em>과 견주어 <strong>환산 백분위</strong>로 바꿉니다.
+      엑셀이 제공하는 입시결과 백분위와 같은 축이라 바로 비교할 수 있습니다.</p>
+    <p><strong>한계</strong> · 대학 고유의 세부 산식, 가산점, 제2외국어 대체, 실기 반영은 그대로 옮기지 못했습니다.
+      등급만 넣은 경우에는 그 등급대의 중간값을 씁니다. 실제 지원은 각 대학 모집요강과
+      대교협 대입상담프로그램으로 다시 확인해 주세요.</p>
+  </footer>
+</div>
+
+<script src="jeongsi-engine.js?v=1"></script>
+<script src="jeongsi-app.js?v=1"></script>
+<script src="jeongsi-ui.js?v=1"></script>
+</body>
+</html>
