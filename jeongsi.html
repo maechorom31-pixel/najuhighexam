@@ -159,6 +159,11 @@
   .btn:active{transform:scale(0.98);}
   .btn:focus-visible{outline:2px solid var(--amber-ink); outline-offset:2px;}
   .empty{padding:36px 20px; text-align:center; color:var(--muted); font-size:14px;}
+  .btn.ghost{background:none; border-color:var(--line-strong); font-weight:600;}
+  .firsttime{
+    font-size:13px; color:var(--amber-ink); background:var(--amber-soft);
+    border-radius:6px; padding:10px 12px; margin:0 0 18px; max-width:none;
+  }
   .note{font-size:12.5px; color:var(--muted); margin-top:12px;}
 
   /* 유리한 대학 카드 */
@@ -269,8 +274,8 @@
 
   <header>
     <h1><span style="display:inline-block">정시 나침반</span> <span style="display:inline-block">— 목표 등급으로 지원 가능선&nbsp;살펴보기</span></h1>
-    <p class="lede">경기도교육청 <strong>정시NAVI</strong> 자료를 바탕으로, 목표 수능 등급을 넣으면
-      전국 대학이 저마다 다르게 정해 둔 수능 반영 방법으로 성적을 다시 계산해 봅니다.</p>
+    <p class="lede">목표 수능 등급을 넣으면, 전국 대학이 저마다 다르게 정해 둔
+      수능 반영 방법으로 성적을 다시 계산해 봅니다.</p>
   </header>
 
   <section id="input-sec">
@@ -330,6 +335,9 @@
           <select id="f-sort"></select>
         </div>
       </div>
+      <div style="margin-top:12px;">
+        <button type="button" class="btn ghost" id="f-reset">조건 초기화</button>
+      </div>
       <div class="chips" id="chip-zone"></div>
       <div class="chips" id="chip-term"></div>
       <div class="chips" id="chip-track"></div>
@@ -346,9 +354,9 @@
   </section>
 
   <footer>
-    <p><strong>자료</strong> · 경기도교육청 진학교육지원방 정시NAVI(2026학년도 정시, 2025-12-24판). 수능 위주 전형만 담겨 있고,
+    <p><strong>자료</strong> · 2026학년도 정시 모집 자료(2025년 12월 기준). 수능 위주 전형만 담겨 있고,
       입시결과는 대학이 공개한 2025학년도 50%·70% 컷입니다.</p>
-    <p><strong>가능성 판정</strong> · 학생의 <strong>기준 백분위</strong>(국어·수학·탐구 두 과목 평균, 엑셀과 같은 계산)와
+    <p><strong>가능성 판정</strong> · 학생의 <strong>기준 백분위</strong>(국어·수학·탐구 두 과목 평균)와
       대학이 공개한 <strong>2025학년도 70%컷 백분위</strong>의 차이로 안정·적정·소신·도전·위험을 나눕니다.</p>
     <p><strong>반영 유불리</strong> · 각 모집단위의 반영 영역·비율·활용지표(표준점수/백분위/변환표준점수/등급)대로
       점수를 다시 계산한 뒤, <em>국어·수학·탐구를 모두 같은 백분위로 받은 학생</em>과 견주어 백분위로 되돌린 값입니다.
@@ -360,8 +368,8 @@
   </footer>
 </div>
 
-<script src="jeongsi-engine.js?v=6"></script>
-<script src="jeongsi-app.js?v=6"></script>
-<script src="jeongsi-ui.js?v=6"></script>
+<script src="jeongsi-engine.js?v=7"></script>
+<script src="jeongsi-app.js?v=7"></script>
+<script src="jeongsi-ui.js?v=7"></script>
 </body>
 </html>

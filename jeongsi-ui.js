@@ -13,11 +13,60 @@
     level: { '4': true, '3': true, '2': true }, mathMode: 'any',
     admit: '', maxRate: 0, gainMode: 'any', relMode: 'any',
     reqOnly: true, cutOnly: true, cartOnly: false,
-    limit: 120,
+    limit: 120, pristine: true,
     results: [], rp: null, cart: {}
   };
 
   var CART_KEY = 'jeongsi.cart.v1';
+  var PROFILE_KEY = 'jeongsi.profile.v1';
+
+  function num1to9(v, dflt) { v = +v; return (v >= 1 && v <= 9) ? Math.round(v) : dflt; }
+  function bandOf(v) { return (v === 'top' || v === 'mid' || v === 'low') ? v : 'mid'; }
+  function pctOf(v) {
+    if (v == null || v === '') return null;
+    v = +v; return (v >= 0 && v <= 100) ? Math.round(v) : null;
+  }
+
+  /** 저장된 성적을 되살린다. 값이 망가져 있어도 화면이 깨지지 않게 하나씩 검사한다. */
+  function loadProfile() {
+    var raw;
+    try { raw = window.localStorage.getItem(PROFILE_KEY); } catch (e) { return false; }
+    if (!raw) return false;
+    var o;
+    try { o = JSON.parse(raw); } catch (e) { return false; }
+    if (!o || typeof o !== 'object') return false;
+    var p = A.profile;
+    function one(dst, src, dflt) {
+      if (!src) return;
+      dst.grade = num1to9(src.grade, dflt);
+      dst.band = bandOf(src.band);
+      dst.pct = pctOf(src.pct);
+    }
+    one(p.kor, o.kor, 3);
+    one(p.math, o.math, 3);
+    if (o.math && A.MATH_TYPES.indexOf(o.math.type) >= 0) p.math.type = o.math.type;
+    p.eng.grade = num1to9(o.eng && o.eng.grade, 3);
+    p.hist.grade = num1to9(o.hist && o.hist.grade, 3);
+    var l2 = o.lang2 && +o.lang2.grade;
+    p.lang2.grade = (l2 >= 1 && l2 <= 9) ? Math.round(l2) : 0;
+    for (var i = 0; i < 2; i++) {
+      var t = o.tam && o.tam[i];
+      if (!t) continue;
+      one(p.tam[i], t, 3);
+      if (A.SATAM.indexOf(t.name) >= 0) { p.tam[i].name = t.name; p.tam[i].cat = '사탐'; }
+      else if (A.GWATAM.indexOf(t.name) >= 0) { p.tam[i].name = t.name; p.tam[i].cat = '과탐'; }
+    }
+    return true;
+  }
+
+  function saveProfile() {
+    try { window.localStorage.setItem(PROFILE_KEY, JSON.stringify(A.profile)); } catch (e) {}
+    if (state.pristine) {
+      state.pristine = false;
+      var el = $('firsttime');
+      if (el) el.parentNode.removeChild(el);
+    }
+  }
   function cartKey(u) { return u.univ + '|' + u.term + '|' + u.admit + '|' + u.unit + '|' + (u.major || ''); }
   function loadCart() {
     try {
@@ -506,9 +555,48 @@
            '<td class="n rt fold">' + etcCell(r) + '</td>';
   }
 
+  /** 기본값에서 손댄 조건만 늘어놓는다. 빈 결과의 원인을 바로 짚게 하려는 것이다. */
+  function changedFilterText() {
+    var on = [];
+    if (state.univ.trim()) on.push('대학 이름 "' + state.univ.trim() + '"');
+    if (state.unit.trim()) on.push('모집단위 "' + state.unit.trim() + '"');
+    if (state.admit.trim()) on.push('전형 "' + state.admit.trim() + '"');
+    var z = Object.keys(state.zone); if (z.length) on.push('권역 ' + z.join('·'));
+    var t = Object.keys(state.term); if (t.length) on.push('군 ' + t.join('·'));
+    var k = Object.keys(state.track).sort();
+    if (k.join('·') !== '공통·의약학·인문·자연') {          // 기본값과 다를 때만
+      on.push(k.length ? '계열 ' + k.join('·') : '계열 아무것도 안 켜짐');
+    }
+    var l = Object.keys(state.level).sort();
+    if (l.join('·') !== ['2', '3', '4'].join('·')) {
+      on.push(l.length ? '가능성 ' + l.slice().reverse().map(function (x) { return A.LEVEL_NAME[+x]; }).join('·')
+                       : '가능성 아무것도 안 켜짐');
+    }
+    if (state.minN) on.push('모집인원 ' + state.minN + '명 이상');
+    if (state.maxRate) on.push('경쟁률 ' + state.maxRate + ':1 이하');
+    if (state.gainMode !== 'any') on.push('반영 유불리 제한');
+    if (state.relMode !== 'any') on.push('입시결과 신뢰도 제한');
+    if (state.mathMode !== 'any') on.push('수학 반영 제한');
+    if (state.cartOnly) on.push('관심 목록에 담은 곳만');
+    if (!state.reqOnly) on.push('지정과목 조건 해제');
+    if (!state.cutOnly) on.push('입시결과 없는 곳 포함');
+    return on;
+  }
+
+  function emptyReason() {
+    var ch = changedFilterText();
+    if (ch.length) return '좁혀 둔 조건 — ' + esc(ch.join(' · '));
+    return '기본 조건(가능성 소신 이상 · 지정과목을 채우는 곳 · 입시결과가 있는 곳)만으로도 남는 곳이 없습니다. ' +
+           '목표 등급을 올려 보거나, 가능성 칩에서 도전·위험을 함께 켜 보세요.';
+  }
+
   function drawTable(rows) {
     if (!rows.length) {
-      $('view').innerHTML = '<div class="tablewrap"><div class="empty">조건에 맞는 모집단위가 없습니다. 권역이나 판정 조건을 넓혀 보세요.</div></div>';
+      $('view').innerHTML = '<div class="tablewrap"><div class="empty">' +
+        '<p style="margin:0 0 4px">조건에 맞는 모집단위가 없습니다.</p>' +
+        '<p style="margin:0 0 16px;font-size:13px">' + emptyReason() + '</p>' +
+        '<button type="button" class="btn noprint" id="empty-reset">조건 초기화</button></div></div>';
+      $('empty-reset').addEventListener('click', resetFilters);
       return;
     }
     var shown = rows.slice(0, state.limit);
@@ -939,6 +1027,7 @@
 
   var timer = null;
   function schedule() {
+    saveProfile();
     if (timer) clearTimeout(timer);
     timer = setTimeout(recompute, 120);
   }
@@ -981,7 +1070,34 @@
     });
   }
 
+  var FILTER_DEFAULTS = {
+    univ: '', unit: '', admit: '', minN: 0, maxRate: 0,
+    gainMode: 'any', relMode: 'any', sort: 'cut',
+    track: { '인문': true, '자연': true, '의약학': true, '공통': true },
+    level: { '4': true, '3': true, '2': true },
+    mathMode: 'any', reqOnly: true, cutOnly: true, cartOnly: false
+  };
+
+  function resetFilters() {
+    state.univ = FILTER_DEFAULTS.univ; state.unit = FILTER_DEFAULTS.unit;
+    state.admit = FILTER_DEFAULTS.admit; state.minN = FILTER_DEFAULTS.minN;
+    state.maxRate = FILTER_DEFAULTS.maxRate; state.gainMode = FILTER_DEFAULTS.gainMode;
+    state.relMode = FILTER_DEFAULTS.relMode;
+    state.sort = state.tab === 'gain' ? 'gain' : FILTER_DEFAULTS.sort;
+    state.zone = {}; state.term = {};
+    state.track = { '인문': true, '자연': true, '의약학': true, '공통': true };
+    state.level = { '4': true, '3': true, '2': true };
+    state.mathMode = state.tab === 'math' ? 'opt' : 'any';
+    state.reqOnly = true; state.cutOnly = true; state.cartOnly = false;
+    $('f-univ').value = ''; $('f-unit').value = ''; $('f-admit').value = '';
+    $('f-req').checked = true; $('f-cut').checked = true; $('f-cart').checked = false;
+    renderFilters();
+    state.limit = 120;
+    draw();
+  }
+
   function bindFilters() {
+    $('f-reset').addEventListener('click', resetFilters);
     $('f-univ').addEventListener('input', function () { state.univ = this.value; state.limit = 120; draw(); });
     $('f-admit').addEventListener('input', function () { state.admit = this.value; state.limit = 120; draw(); });
     $('f-rate').addEventListener('change', function () { state.maxRate = +this.value; state.limit = 120; draw(); });
@@ -1001,6 +1117,14 @@
   $('view').innerHTML = '<div class="tablewrap"><div class="empty">자료를 불러오는 중입니다…</div></div>';
   state.cart = loadCart();
   A.load().then(function () {
+    state.pristine = !loadProfile();
+    if (state.pristine) {
+      var note = document.createElement('p');
+      note.id = 'firsttime';
+      note.className = 'firsttime noprint';
+      note.textContent = '아래는 예시 성적입니다. 목표로 삼은 등급으로 바꾸면 결과가 바로 다시 계산되고, 다음에 열 때도 그대로 남습니다.';
+      $('scores').parentNode.insertBefore(note, $('scores'));
+    }
     renderScores();
     renderCartCount();
     renderFilters();

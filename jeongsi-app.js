@@ -40,8 +40,8 @@
 
   function load() {
     return Promise.all([
-      fetch('data/jeongsi/meta.json?v=3').then(function (r) { return r.json(); }),
-      fetch('data/jeongsi/units.json?v=3').then(function (r) { return r.json(); })
+      fetch('data/jeongsi/meta.json?v=4').then(function (r) { return r.json(); }),
+      fetch('data/jeongsi/units.json?v=4').then(function (r) { return r.json(); })
     ]).then(function (res) {
       META = res[0];
       UNITS = expand(res[1]);

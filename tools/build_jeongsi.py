@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-정시NAVI 엑셀(경기도교육청 배포) -> 정시 나침반 웹앱용 JSON 변환기.
+2026학년도 정시 모집 자료 엑셀 -> 정시 나침반 웹앱용 JSON 변환기.
 
-사용법:  python3 tools/build_jeongsi.py <정시나비.xlsx> [출력디렉터리]
+사용법:  python3 tools/build_jeongsi.py <자료.xlsx> [출력디렉터리]
 기본 출력: data/jeongsi/
 
 만들어지는 파일
@@ -406,7 +406,7 @@ def build(xlsx_path, out_dir):
 
     os.makedirs(out_dir, exist_ok=True)
     meta = {
-        'source': os.path.basename(xlsx_path),
+        'year': 2026,
         'scoreTables': score_tables,
         'pctToStd': pct_to_std(score_tables),
         'maxStd': {k: v[0][0] for k, v in score_tables.items()},
@@ -443,9 +443,14 @@ DICT_COLS = {'zone', 'region', 'city', 'univ', 'term', 'admit', 'unit', 'major',
 
 
 def compact(units):
-    """반복이 심한 열을 사전(인덱스) 방식으로 압축한다."""
-    dicts = {c: {} for c in DICT_COLS}
-    order = {c: [] for c in DICT_COLS}
+    """반복이 심한 열을 사전(인덱스) 방식으로 압축한다.
+
+    사전의 키 순서는 COLS를 따른다. DICT_COLS(집합)를 그대로 돌면 실행마다
+    순서가 바뀌어, 자료를 다시 만들 때마다 파일 전체가 달라 보인다.
+    """
+    keys = [c for c in COLS if c in DICT_COLS]
+    dicts = {c: {} for c in keys}
+    order = {c: [] for c in keys}
 
     def idx(col, val):
         k = json.dumps(val, ensure_ascii=False, separators=(',', ':'))
@@ -469,6 +474,6 @@ def compact(units):
 
 
 if __name__ == '__main__':
-    src = sys.argv[1] if len(sys.argv) > 1 else 'navi.xlsx'
+    src = sys.argv[1] if len(sys.argv) > 1 else 'jeongsi.xlsx'
     dst = sys.argv[2] if len(sys.argv) > 2 else 'data/jeongsi'
     build(src, dst)
