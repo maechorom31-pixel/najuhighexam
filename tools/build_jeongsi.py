@@ -43,10 +43,14 @@ def num(v):
 
 
 def key(univ, term, admit, unit):
-    """시트 사이를 잇는 조인 키. 전형명 표기 흔들림(…전형)을 흡수한다."""
+    """시트 사이를 잇는 조인 키.
+
+    전형명 표기가 시트마다 흔들린다. '일반학생전형'과 '일반학생', '일반전형1'과 '일반1'을
+    같은 것으로 보게 끝(또는 끝의 번호 앞)에 붙은 '전형'을 떼어 낸다.
+    """
     def n(x):
         x = s(x).replace(' ', '')
-        return re.sub(r'전형$', '', x)
+        return re.sub(r'전형(?=\d*$)', '', x)
     return (n(univ), n(term), n(admit), n(unit))
 
 
@@ -260,28 +264,61 @@ def build(xlsx_path, out_dir):
         idx_track[(k[0], k[1], k[2])].append(v)
         idx_track[(k[0], k[1])].append(v)
 
-    def lookup_ratio(k):
+    def same(cands):
+        return len({(x['areas'], tuple(x['w']), x['total']) for x in cands}) == 1
+
+    def narrow(cands, unit_name, track):
+        """모집계열 시트 행 가운데 이 모집단위/계열에 해당하는 것만 남긴다."""
+        if not cands:
+            return cands
+        hit = [x for x in cands if unit_name and unit_name in (x['unit'] or '')]
+        if hit:
+            return hit
+        if track:
+            hit = [x for x in cands if track and track in (x['unit'] or '')]
+            if hit:
+                return hit
+        hit = [x for x in cands if '전체' in (x['unit'] or '')]
+        return hit or cands
+
+    def lookup_ratio(k, unit_name='', track=''):
         if k in ratio_unit:
             return ratio_unit[k], 'exact'
         c = idx_unit.get((k[0], k[1], k[3]))
-        if c and len({(x['areas'], tuple(x['w']), x['total']) for x in c}) == 1:
+        if c and same(c):
             return c[0], 'unit'
         c = idx_admit.get((k[0], k[1], k[2]))
-        if c and len({(x['areas'], tuple(x['w']), x['total']) for x in c}) == 1:
+        if c and same(c):
             return c[0], 'admit'
-        c = idx_track.get((k[0], k[1], k[2])) or idx_track.get((k[0], k[1]))
-        if c and len({(x['areas'], tuple(x['w']), x['total']) for x in c}) == 1:
+        c = narrow(idx_track.get((k[0], k[1], k[2])) or idx_track.get((k[0], k[1])), unit_name, track)
+        if c and same(c):
             return c[0], 'track'
         if c:
             return c[0], 'track~'
-        if idx_admit.get((k[0], k[1], k[2])):
-            return idx_admit[(k[0], k[1], k[2])][0], 'admit~'
+        c = idx_admit.get((k[0], k[1], k[2]))
+        if c:
+            return c[0], 'admit~'
         return None, None
 
     def lookup_pts(table, k):
         if k in table:
             return table[k]
         return None
+
+    def req_of(k, rt, how, field):
+        """지정과목은 잘못 물려받으면 지원 가능한 곳을 통째로 지워 버린다.
+        정확히 맞은 행이 아니면, 같은 대학·전형 안에서 값이 하나로 모일 때만 쓴다."""
+        if not rt:
+            return ''
+        if how == 'exact':
+            return rt.get(field, '')
+        pool = idx_admit.get((k[0], k[1], k[2])) or []
+        vals = {x.get(field, '') for x in pool if x.get(field, '')}
+        if len(vals) == 1:
+            return vals.pop()
+        if len(vals) > 1:
+            return ''          # 계열마다 달라 단정할 수 없다 -> 제한 없음으로 둔다
+        return rt.get(field, '')
 
     ws = wb['2026정시']
     units = []
@@ -290,7 +327,7 @@ def build(xlsx_path, out_dir):
         if not s(r[3]):
             continue
         k = key(r[3], r[4], r[5], r[6])
-        rt, how = lookup_ratio(k)
+        rt, how = lookup_ratio(k, s(r[6]), s(r[11]))
         stat[how or 'none'] += 1
         e = lookup_pts(eng, k) or {}
         h = lookup_pts(his, k) or {}
@@ -321,8 +358,8 @@ def build(xlsx_path, out_dir):
             # 반영비율 시트에서 온 정밀 정보
             'areas': (rt or {}).get('areas', ''),
             'w': (rt or {}).get('w') or [s(r[19]), s(r[20]), s(r[21]), s(r[22]), s(r[24]), s(r[23])],
-            'reqMath': (rt or {}).get('reqMath', ''),
-            'reqTam': (rt or {}).get('reqTam', '') or s(r[17]),
+            'reqMath': req_of(k, rt, how, 'reqMath'),
+            'reqTam': req_of(k, rt, how, 'reqTam') or s(r[17]),
             'bonus': (rt or {}).get('bonus', ''),
             'bonusArea': (rt or {}).get('bonusArea', ''),
             'note': (rt or {}).get('note', ''),

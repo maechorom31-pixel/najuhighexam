@@ -10,16 +10,35 @@
     univ: '', unit: '', minN: 0, sort: 'cut',
     zone: {}, term: {}, track: { '인문': true, '자연': true, '의약학': true, '공통': true },
     level: { '4': true, '3': true, '2': true }, mathMode: 'any',
-    reqOnly: true, cutOnly: true,
+    admit: '', maxRate: 0, gainMode: 'any',
+    reqOnly: true, cutOnly: true, cartOnly: false,
     limit: 120,
-    results: [], rp: null
+    results: [], rp: null, cart: {}
   };
+
+  var CART_KEY = 'jeongsi.cart.v1';
+  function cartKey(u) { return u.univ + '|' + u.term + '|' + u.admit + '|' + u.unit + '|' + (u.major || ''); }
+  function loadCart() {
+    try {
+      var raw = window.localStorage.getItem(CART_KEY);
+      if (!raw) return {};
+      var arr = JSON.parse(raw), o = {};
+      for (var i = 0; i < arr.length; i++) o[arr[i]] = true;
+      return o;
+    } catch (e) { return {}; }
+  }
+  function saveCart() {
+    try { window.localStorage.setItem(CART_KEY, JSON.stringify(Object.keys(state.cart))); } catch (e) {}
+  }
+  function cartCount() { return Object.keys(state.cart).length; }
 
   var ZONES = ['서울', '경인권', '충청권', '강원권', '전라권', '경상권', '제주권'];
   var TERMS = ['가', '나', '다'];
   var TRACKS = ['인문', '자연', '의약학', '예체능', '공통'];
   var LEVELS = [['4', '안정'], ['3', '적정'], ['2', '소신'], ['1', '도전'], ['0', '위험']];
   var MATHMODES = [['any', '전체'], ['none', '미반영'], ['opt', '미반영·선택'], ['w20', '20% 이하'], ['w30', '30% 이하']];
+  var RATES = [[0, '제한 없음'], [3, '3:1 이하'], [5, '5:1 이하'], [8, '8:1 이하'], [12, '12:1 이하']];
+  var GAINS = [['any', '제한 없음'], ['plus', '유리한 곳만'], ['nominus', '불리한 곳 빼기']];
   var SORTS = [
     ['cut', '입시결과 높은 순'],
     ['diff', '내 성적과 가까운 순'],
@@ -183,6 +202,12 @@
       return '<option value="' + v + '"' + (v === state.minN ? ' selected' : '') + '>' +
              (v === 0 ? '제한 없음' : v + '명 이상') + '</option>';
     }).join('');
+    $('f-rate').innerHTML = RATES.map(function (o) {
+      return '<option value="' + o[0] + '"' + (o[0] === state.maxRate ? ' selected' : '') + '>' + o[1] + '</option>';
+    }).join('');
+    $('f-gain').innerHTML = GAINS.map(function (o) {
+      return '<option value="' + o[0] + '"' + (o[0] === state.gainMode ? ' selected' : '') + '>' + o[1] + '</option>';
+    }).join('');
     $('f-sort').innerHTML = SORTS.map(function (o) {
       return '<option value="' + o[0] + '"' + (o[0] === state.sort ? ' selected' : '') + '>' + o[1] + '</option>';
     }).join('');
@@ -213,10 +238,14 @@
   }
 
   function mathChips() {
+    // 수학 탭에서는 '전체'를 고를 수 없다. 탭 이름과 필터가 어긋나지 않게 한다.
+    var modes = state.tab === 'math'
+      ? MATHMODES.filter(function (m) { return m[0] !== 'any'; })
+      : MATHMODES;
     var h = '<span class="lab">수학 반영</span>';
-    for (var i = 0; i < MATHMODES.length; i++) {
-      h += '<button type="button" class="chip" data-v="' + MATHMODES[i][0] + '" aria-pressed="' +
-           (state.mathMode === MATHMODES[i][0] ? 'true' : 'false') + '">' + MATHMODES[i][1] + '</button>';
+    for (var i = 0; i < modes.length; i++) {
+      h += '<button type="button" class="chip" data-v="' + modes[i][0] + '" aria-pressed="' +
+           (state.mathMode === modes[i][0] ? 'true' : 'false') + '">' + modes[i][1] + '</button>';
     }
     $('chip-math').innerHTML = h;
     var btns = $('chip-math').querySelectorAll('.chip');
@@ -233,7 +262,7 @@
   function anySelected(o) { for (var k in o) if (o.hasOwnProperty(k)) return true; return false; }
 
   function filtered() {
-    var out = [], q1 = state.univ.trim(), q2 = state.unit.trim();
+    var out = [], q1 = state.univ.trim(), q2 = state.unit.trim(), q3 = state.admit.trim();
     var useZone = anySelected(state.zone), useTerm = anySelected(state.term),
         useTrack = anySelected(state.track), useLevel = anySelected(state.level);
     for (var i = 0; i < state.results.length; i++) {
@@ -247,8 +276,16 @@
       if (state.minN && (u.n26 || 0) < state.minN) continue;
       if (q1 && u.univ.indexOf(q1) < 0) continue;
       if (q2 && (u.unit + ' ' + (u.major || '')).indexOf(q2) < 0) continue;
-      if (state.tab === 'math' || state.mathMode !== 'any') {
-        var m = state.tab === 'math' && state.mathMode === 'any' ? 'opt' : state.mathMode;
+      if (q3 && (u.admit || '').indexOf(q3) < 0) continue;
+      if (state.cartOnly && !state.cart[cartKey(u)]) continue;
+      if (state.maxRate) {
+        var rate = u.compete && u.compete[0];
+        if (rate == null || rate > state.maxRate) continue;
+      }
+      if (state.gainMode === 'plus' && !(r.gain != null && r.gain >= 1.5)) continue;
+      if (state.gainMode === 'nominus' && r.gain != null && r.gain <= -1.5) continue;
+      if (state.mathMode !== 'any') {
+        var m = state.mathMode;
         if (m === 'none' && r.math.role !== '미반영') continue;
         if (m === 'opt' && r.math.role === '필수') continue;
         if (m === 'w20' && !(r.math.role !== '필수' || r.math.max <= 20)) continue;
@@ -296,6 +333,16 @@
     return '<span class="num">' + sgn(r.gain) + '</span>';
   }
 
+  var BOOKMARK = '<svg viewBox="0 0 12 16" aria-hidden="true"><path d="M1.5 1.5h9v13l-4.5-3.6-4.5 3.6z"/></svg>';
+
+  function keepCell(r) {
+    var on = !!state.cart[cartKey(r.u)];
+    return '<button type="button" class="keep" data-k="' + esc(cartKey(r.u)) + '" aria-pressed="' +
+           (on ? 'true' : 'false') + '" title="' + (on ? '관심 목록에서 빼기' : '관심 목록에 담기') +
+           '" aria-label="' + esc(r.u.univ + ' ' + r.u.unit) + (on ? ' 관심 목록에서 빼기' : ' 관심 목록에 담기') +
+           '">' + BOOKMARK + '</button>';
+  }
+
   function mathCell(r) {
     if (r.math.role === '미반영') return '<span class="tag">미반영</span>';
     if (r.math.role === '선택') return '<span class="tag">선택 ' + f1(r.math.max) + '%</span>';
@@ -312,13 +359,16 @@
       '<th>군</th><th>대학</th><th>모집단위</th><th>계열</th>' +
       '<th class="n">모집</th><th class="n">2025<br>70%컷</th><th class="n">내 기준<br>대비</th>' +
       '<th>가능성</th><th class="n">반영<br>유불리</th><th class="n">수학<br>비중</th><th class="n">2025<br>경쟁률</th>' +
+      '<th>관심</th>' +
       '</tr></thead><tbody>';
     for (var i = 0; i < shown.length; i++) {
       var r = shown[i], u = r.u;
       h += '<tr class="main"><td>' + esc(u.term) + '</td>' +
         '<td class="uni">' + esc(u.univ) + '</td>' +
         '<td class="major"><button type="button" class="rowbtn" data-i="' + i + '">' +
-          esc(tie(u.unit)) + (u.major ? ' <span class="tag plain">세부</span>' : '') +
+          esc(tie(u.unit)) +
+          (u.dupAdmit ? ' <span class="tag plain">' + esc(u.admit) + '</span>' : '') +
+          (u.major ? ' <span class="tag plain">세부</span>' : '') +
           (!r.req.ok ? ' <span class="warn">지정과목 확인</span>' : '') + '</button></td>' +
         '<td>' + esc(u.track) + '</td>' +
         '<td class="n">' + (u.n26 == null ? '–' : u.n26) + '</td>' +
@@ -327,8 +377,9 @@
         '<td>' + levelCell(r) + '</td>' +
         '<td class="n">' + gainCell(r) + '</td>' +
         '<td class="n">' + mathCell(r) + '</td>' +
-        '<td class="n">' + (u.compete && u.compete[0] != null ? f1(u.compete[0]) : '–') + '</td></tr>';
-      h += '<tr class="det" id="det-' + i + '" hidden><td colspan="11">' + detail(r) + '</td></tr>';
+        '<td class="n">' + (u.compete && u.compete[0] != null ? f1(u.compete[0]) : '–') + '</td>' +
+        '<td class="noprint">' + keepCell(r) + '</td></tr>';
+      h += '<tr class="det" id="det-' + i + '" hidden><td colspan="12">' + detail(r) + '</td></tr>';
     }
     h += '</tbody></table></div>';
     if (rows.length > state.limit) {
@@ -349,7 +400,178 @@
         row.hidden = !row.hidden;
       });
     }
+    bindKeep($('view'));
     if ($('more')) $('more').addEventListener('click', function () { state.limit += 120; draw(); });
+  }
+
+  function bindKeep(root) {
+    var bs = root.querySelectorAll('.keep');
+    for (var i = 0; i < bs.length; i++) {
+      bs[i].addEventListener('click', function () {
+        var k = this.getAttribute('data-k');
+        if (state.cart[k]) delete state.cart[k]; else state.cart[k] = true;
+        saveCart();
+        this.setAttribute('aria-pressed', state.cart[k] ? 'true' : 'false');
+        this.setAttribute('title', state.cart[k] ? '관심 목록에서 빼기' : '관심 목록에 담기');
+        renderCartCount();
+        if (state.tab === 'cart' || state.cartOnly) draw();
+      });
+    }
+  }
+
+  function renderCartCount() {
+    var n = cartCount();
+    $('cart-n').textContent = n ? ' ' + n : '';
+  }
+
+  var AREA_NAME = { '국': '국어', '수': '수학', '영': '영어', '탐': '탐구', '한': '한국사', '외': '제2외국어' };
+
+  /** 앞 낱말의 받침에 맞춰 조사를 고른다. '을/를', '이/가', '은/는', '와/과'. */
+  function josa(word, pair) {
+    var w = String(word || '').replace(/[)\]}>"']+$/, '');
+    var ch = w.charAt(w.length - 1), code = ch.charCodeAt(0), batchim;
+    if (code >= 0xAC00 && code <= 0xD7A3) batchim = (code - 0xAC00) % 28 !== 0;
+    else if (ch >= '0' && ch <= '9') batchim = '013678'.indexOf(ch) >= 0;
+    else if (ch === '%') batchim = true;              // 퍼센트
+    else batchim = true;
+    var p = pair.split('/');
+    return batchim ? p[0] : p[1];
+  }
+  /** '(으)로'는 받침이 없거나 ㄹ 받침이면 '로'를 쓴다. */
+  function josaRo(word) {
+    var w = String(word || '').replace(/[)\]}>"']+$/, '');
+    var ch = w.charAt(w.length - 1), code = ch.charCodeAt(0);
+    if (code >= 0xAC00 && code <= 0xD7A3) {
+      var t = (code - 0xAC00) % 28;
+      return (t === 0 || t === 8) ? '로' : '으로';    // 8 = ㄹ 받침
+    }
+    if (ch >= '0' && ch <= '9') return '1245789'.indexOf(ch) >= 0 ? '로' : '으로';
+    if (ch === '%') return '로';                        // 퍼센트
+    return '으로';
+  }
+
+  /** 반영영역 표기를 사람 말로 푼다. '택2(국수영)+탐1한' → '국어·수학·영어 중 잘한 2개 + 탐구 1과목 + 한국사' */
+  function areasInWords(u) {
+    var terms = window.JeongsiEngine.parsePattern(u.areas, u.tCnt);
+    if (!terms) return '';
+    var out = [];
+    for (var i = 0; i < terms.length; i++) {
+      var t = terms[i];
+      if (t.kind === 'rest') { out.push('앞에서 안 쓴 영역 중 잘한 ' + t.n + '개'); continue; }
+      var names = t.areas.map(function (a) {
+        if (a.indexOf('탐@') === 0) return '탐구 ' + a.slice(2) + '과목';
+        if (a.indexOf('탐#') === 0) return '탐구 ' + a.slice(2) + '번 과목';
+        return AREA_NAME[a] || a;
+      });
+      if (t.kind === 'fix') out.push(names.join('·'));
+      else out.push(names.join('·') + ' 중 잘한 ' + t.n + '개' + (t.avg ? '의 평균' : ''));
+    }
+    return out.join(' + ');
+  }
+
+  /** 이 성적에 왜 이런 결과가 나왔는지 설명한다. */
+  function explain(r) {
+    var u = r.u, W = r.wUsed, rp = state.rp, lines = [];
+
+    var words = areasInWords(u);
+    if (words) {
+      lines.push('이 모집단위는 <b>' + esc(words) + '</b>' + josa(words, '을/를') + ' 반영합니다.');
+    } else if (u.areas || u.memo) {
+      lines.push('이 모집단위의 반영 방법은 <b>' + esc(u.areas || u.memo) + '</b>입니다. ' +
+                 '표기가 자동 해석되지 않아, 아래 비율은 어림값입니다.');
+    }
+
+    // 실제로 어떤 영역이 뽑혔는지
+    var picked = [], dropped = [], ORDER = ['국', '수', '영', '탐', '한', '외'];
+    ORDER.forEach(function (a) {
+      if (W[a]) picked.push(AREA_NAME[a] + ' ' + f1(W[a]) + '%');
+      else if (u.w[ORDER.indexOf(a)]) dropped.push(AREA_NAME[a]);
+    });
+    if (picked.length) {
+      var sent = '이 성적에서는 <b>' + esc(picked.join(', ')) + '</b>로 잡혔습니다';
+      if (dropped.length) {
+        var d = dropped.join('·');
+        sent += '. ' + esc(d) + josa(d, '은/는') + ' 빠졌습니다';
+      }
+      lines.push(sent + '.');
+    }
+
+    // 수학 부담
+    var mr = r.math;
+    if (mr.role === '미반영') {
+      lines.push('<b>수학을 아예 반영하지 않습니다.</b> 수학 성적은 결과에 들어가지 않습니다.');
+    } else if (mr.role === '선택' && !W['수']) {
+      lines.push('<b>수학은 골라서 반영하는 영역이라 이 성적에서는 빠졌습니다.</b> ' +
+                 '더 잘한 영역이 대신 들어갔기 때문입니다. 수학 부담이 낮은 이유가 여기 있습니다.');
+    } else if (mr.role === '선택') {
+      lines.push('수학은 골라서 반영하는 영역인데, 이 성적에서는 다른 영역보다 나아 <b>' +
+                 f1(W['수']) + '%</b>로 뽑혔습니다.');
+    } else if (W['수']) {
+      lines.push('수학은 <b>' + f1(W['수']) + '%</b>로 반드시 반영합니다.');
+    }
+
+    // 활용지표
+    if (u.idxKM && u.idxT === u.idxKM) {
+      lines.push('국어·수학·탐구 모두 ' + esc(indicatorName(u.idxKM)) + josaRo(indicatorName(u.idxKM)) + ' 반영합니다.');
+    } else {
+      var idx = [];
+      if (u.idxKM) idx.push('국어·수학은 ' + indicatorName(u.idxKM));
+      if (u.idxT) idx.push('탐구는 ' + indicatorName(u.idxT));
+      if (idx.length) lines.push(esc(idx.join(', ')) + josaRo(idx[idx.length - 1]) + ' 반영합니다.');
+    }
+
+    // 유불리와 그 이유
+    if (r.gain != null && r.adjPct != null) {
+      var c = areaContrib(r);
+      var up = c.filter(function (x) { return x.v > 0.3; }).slice(0, 2).map(function (x) { return x.n; });
+      var dn = c.filter(function (x) { return x.v < -0.3; }).slice(0, 2).map(function (x) { return x.n; });
+      var head = '기준 백분위 <b>' + f1(rp.basePct) + '</b>이 이 대학 방식에서는 <b>' + f1(r.adjPct) + '</b>';
+      var why = '';
+      if (r.gain >= 1.5) {
+        head += josaRo(f1(r.adjPct)) + ' 올라갑니다(' + sgn(r.gain) + ').';
+        if (up.length) why = ' 잘하는 ' + esc(up.join('·')) + josa(up[up.length - 1], '이/가') + ' 크게 잡힌 덕입니다.';
+        else if (dn.length) why = ' 약한 ' + esc(dn.join('·')) + josa(dn[dn.length - 1], '이/가') + ' 적게 반영된 덕입니다.';
+      } else if (r.gain <= -1.5) {
+        head += josaRo(f1(r.adjPct)) + ' 내려갑니다(' + sgn(r.gain) + ').';
+        if (dn.length) why = ' 약한 ' + esc(dn.join('·')) + '의 비중이 크기 때문입니다.';
+      } else {
+        head += josaRo(f1(r.adjPct)) + ' 거의 그대로입니다(' + sgn(r.gain) + ').';
+      }
+      lines.push(head + why);
+    }
+    return '<div class="why"><p>' + lines.join('</p><p>') + '</p></div>';
+  }
+
+  function indicatorName(v) {
+    if (v === '표준') return '표준점수';
+    if (v === '변환표준') return '대학이 만든 변환표준점수';
+    if (v === '표준+백분') return '표준점수와 백분위';
+    return v;
+  }
+
+  /** 영역별로 기준 백분위 대비 얼마나 끌어올렸는지(내렸는지) 나눈다. */
+  function areaContrib(r) {
+    var rp = state.rp, W = r.wUsed, tot = 0, out = [];
+    for (var a in W) tot += W[a];
+    if (!tot) return out;
+    var pctOf = {
+      '국': rp.kor.pct, '수': rp.math.pct,
+      '탐': (rp.tam[0].pct + rp.tam[1].pct) / 2,
+      '영': engPctLike(r.u, rp.eng.grade),
+      '한': null, '외': null
+    };
+    for (a in W) {
+      if (pctOf[a] == null) continue;
+      out.push({ n: AREA_NAME[a], v: W[a] / tot * (pctOf[a] - rp.basePct) });
+    }
+    out.sort(function (x, y) { return Math.abs(y.v) - Math.abs(x.v); });
+    return out;
+  }
+
+  /** 영어 등급을 백분위처럼 견주기 위한 근사값. */
+  function engPctLike(u, g) {
+    if (u.engPts && u.engPts[0] > 0) return Math.max(0, (u.engPts[g - 1] || 0) / u.engPts[0]) * 100;
+    return Math.max(0, 100 - (g - 1) * 6);
   }
 
   function detail(r) {
@@ -359,7 +581,8 @@
     });
     var c = u.compete || [];
     var h = '<div class="det">';
-    h += '<p class="memo"><strong>반영 방법</strong> · ' + esc(u.areas || u.memo || '자료 없음') +
+    h += explain(r);
+    h += '<p class="memo"><strong>반영 방법 표기</strong> · ' + esc(u.areas || u.memo || '자료 없음') +
          (u.memo && u.memo !== u.areas ? ' — ' + esc(u.memo) : '') + '</p>';
     h += '<dl>';
     h += row('내 성적에 적용된 비율', parts.length ? parts.join(' · ') : '자료 없음');
@@ -371,6 +594,7 @@
     h += row('영어 · 한국사', '영어 ' + esc(u.engMethod || '–') +
              (u.engPts ? ' (1등급 ' + f1(u.engPts[0]) + '점 → 내 등급 ' + f1(u.engPts[state.rp.eng.grade - 1]) + '점)' : '') +
              ' / 한국사 ' + esc(u.hisMethod || '–'));
+    h += row('전형', esc(u.admit || '–') + (u.major ? ' · 세부전공 ' + esc(u.major) : ''));
     h += row('전형 방법', esc(u.method || '–') + ' · 수능총점 ' + (u.total || '–') +
              (u.totalAll ? ' / 전형총점 ' + u.totalAll : ''));
     h += row('반영 방식 적용 백분위',
@@ -455,6 +679,67 @@
     $('view').innerHTML = h;
   }
 
+  /* --------------------------------------------------- 관심 목록 (탭 4) */
+
+  function drawCart() {
+    var picked = [];
+    for (var i = 0; i < state.results.length; i++) {
+      if (state.cart[cartKey(state.results[i].u)]) picked.push(state.results[i]);
+    }
+    if (!picked.length) {
+      $('view').innerHTML = '<div class="cartempty">아직 담은 곳이 없습니다. ' +
+        '표 오른쪽 끝 <span aria-hidden="true">' + BOOKMARK + '</span> 단추를 눌러 담아 두면, ' +
+        '가·나·다군으로 정리해 한눈에 견줄 수 있습니다. 담은 목록은 이 브라우저에 남습니다.</div>';
+      return;
+    }
+    var terms = ['가', '나', '다', '군외'], h = '';
+    var lv = [0, 0, 0, 0, 0], seat = 0;
+    picked.forEach(function (r) { if (r.level >= 0) lv[r.level]++; seat += r.u.n26 || 0; });
+    h += '<p class="note" style="margin-top:0">담은 곳 <b class="num">' + picked.length + '</b>곳 · ' +
+         '안정 ' + lv[4] + ' · 적정 ' + lv[3] + ' · 소신 ' + lv[2] + ' · 도전 ' + lv[1] + ' · 위험 ' + lv[0] +
+         '. 정시는 가·나·다군에서 한 곳씩 모두 세 번 지원합니다. 군별로 고르게 담겼는지 살펴보세요.</p>';
+
+    terms.forEach(function (t) {
+      var rows = picked.filter(function (r) { return r.u.term === t; });
+      if (!rows.length) return;
+      rows.sort(function (a, b) { return (b.cut70p || 0) - (a.cut70p || 0); });
+      h += '<div class="cartgroup"><h3>' + t + '군</h3><p class="sub">' + rows.length + '곳 · ' +
+           rows.filter(function (r) { return r.level >= 3; }).length + '곳이 적정 이상</p>';
+      h += '<div class="tablewrap"><table><thead><tr>' +
+        '<th>대학</th><th>모집단위</th><th>계열</th><th class="n">모집</th>' +
+        '<th class="n">2025<br>70%컷</th><th class="n">내 기준<br>대비</th><th>가능성</th>' +
+        '<th class="n">반영<br>유불리</th><th class="n">수학<br>비중</th><th class="n">2025<br>경쟁률</th>' +
+        '<th class="n">2025<br>충원율</th><th class="noprint">관심</th></tr></thead><tbody>';
+      rows.forEach(function (r) {
+        var u = r.u, c = u.compete || [];
+        h += '<tr class="main"><td class="uni">' + esc(u.univ) + '</td>' +
+          '<td class="major">' + esc(tie(u.unit)) +
+            (u.dupAdmit ? ' <span class="tag plain">' + esc(u.admit) + '</span>' : '') + '</td>' +
+          '<td>' + esc(u.track) + '</td>' +
+          '<td class="n">' + (u.n26 == null ? '–' : u.n26) + '</td>' +
+          '<td class="n">' + f1(r.cut70p) + '</td>' +
+          '<td class="n">' + sgn(r.diff) + '</td>' +
+          '<td>' + levelCell(r) + '</td>' +
+          '<td class="n">' + gainCell(r) + '</td>' +
+          '<td class="n">' + mathCell(r) + '</td>' +
+          '<td class="n">' + (c[0] == null ? '–' : f1(c[0])) + '</td>' +
+          '<td class="n">' + (c[1] == null ? '–' : f1(c[1] * 100) + '%') + '</td>' +
+          '<td class="noprint">' + keepCell(r) + '</td></tr>';
+      });
+      h += '</tbody></table></div></div>';
+    });
+    h += '<div class="more noprint" style="margin-top:24px;">' +
+         '<button type="button" class="btn" id="cart-print">인쇄 / PDF로 저장</button> ' +
+         '<button type="button" class="btn" id="cart-clear" style="background:none;border-color:var(--line-strong);">' +
+         '전부 비우기</button></div>';
+    $('view').innerHTML = h;
+    bindKeep($('view'));
+    $('cart-print').addEventListener('click', function () { window.print(); });
+    $('cart-clear').addEventListener('click', function () {
+      state.cart = {}; saveCart(); renderCartCount(); draw();
+    });
+  }
+
   /* ------------------------------------------------------------- 실행 흐름 */
 
   var timer = null;
@@ -474,19 +759,26 @@
 
   function draw() {
     var rows = filtered();
-    if (state.tab === 'gain') drawGain(rows.slice().sort(function (a, b) { return b.gain - a.gain; }));
+    if (state.tab === 'cart') drawCart();
+    else if (state.tab === 'gain') drawGain(rows.slice().sort(function (a, b) {
+      return (b.gain == null ? -999 : b.gain) - (a.gain == null ? -999 : a.gain);
+    }));
     else drawTable(rows);
   }
 
   function bindTabs() {
-    [['tab-all', 'all'], ['tab-math', 'math'], ['tab-gain', 'gain']].forEach(function (t) {
+    [['tab-all', 'all'], ['tab-math', 'math'], ['tab-gain', 'gain'], ['tab-cart', 'cart']].forEach(function (t) {
       $(t[0]).addEventListener('click', function () {
         state.tab = t[1];
-        ['tab-all', 'tab-math', 'tab-gain'].forEach(function (id) {
+        ['tab-all', 'tab-math', 'tab-gain', 'tab-cart'].forEach(function (id) {
           $(id).setAttribute('aria-selected', id === t[0] ? 'true' : 'false');
         });
-        if (t[1] === 'math' && state.mathMode === 'any') { state.mathMode = 'opt'; mathChips(); }
+        if (t[1] === 'math') { if (state.mathMode === 'any') state.mathMode = 'opt'; }
+        else if (state.mathMode !== 'any') { state.mathMode = 'any'; }
+        mathChips();
         if (t[1] === 'gain' && state.sort !== 'gain') { state.sort = 'gain'; $('f-sort').value = 'gain'; }
+        if (t[1] === 'all' && state.sort === 'gain') { state.sort = 'cut'; $('f-sort').value = 'cut'; }
+        $('filters-card').style.display = t[1] === 'cart' ? 'none' : '';
         state.limit = 120;
         draw();
       });
@@ -495,6 +787,10 @@
 
   function bindFilters() {
     $('f-univ').addEventListener('input', function () { state.univ = this.value; state.limit = 120; draw(); });
+    $('f-admit').addEventListener('input', function () { state.admit = this.value; state.limit = 120; draw(); });
+    $('f-rate').addEventListener('change', function () { state.maxRate = +this.value; state.limit = 120; draw(); });
+    $('f-gain').addEventListener('change', function () { state.gainMode = this.value; state.limit = 120; draw(); });
+    $('f-cart').addEventListener('change', function () { state.cartOnly = this.checked; state.limit = 120; draw(); });
     $('f-unit').addEventListener('input', function () { state.unit = this.value; state.limit = 120; draw(); });
     $('f-min').addEventListener('change', function () { state.minN = +this.value; state.limit = 120; draw(); });
     $('f-sort').addEventListener('change', function () { state.sort = this.value; state.limit = 120; draw(); });
@@ -506,8 +802,10 @@
   document.addEventListener('touchstart', function () {}, { passive: true });
 
   $('view').innerHTML = '<div class="tablewrap"><div class="empty">자료를 불러오는 중입니다…</div></div>';
+  state.cart = loadCart();
   A.load().then(function () {
     renderScores();
+    renderCartCount();
     renderFilters();
     bindTabs();
     bindFilters();

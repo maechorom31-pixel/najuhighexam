@@ -40,13 +40,41 @@
 
   function load() {
     return Promise.all([
-      fetch('data/jeongsi/meta.json?v=1').then(function (r) { return r.json(); }),
-      fetch('data/jeongsi/units.json?v=1').then(function (r) { return r.json(); })
+      fetch('data/jeongsi/meta.json?v=2').then(function (r) { return r.json(); }),
+      fetch('data/jeongsi/units.json?v=2').then(function (r) { return r.json(); })
     ]).then(function (res) {
       META = res[0];
       UNITS = expand(res[1]);
+      markDuplicates(UNITS);
+      markRuleKeys(UNITS);
       READY = true;
     });
+  }
+
+  /** 같은 대학·군·모집단위가 전형만 다르게 여러 줄 있으면 표에서 구분해 줘야 한다. */
+  function markDuplicates(units) {
+    var seen = {};
+    for (var i = 0; i < units.length; i++) {
+      var u = units[i], k = u.univ + '|' + u.term + '|' + u.unit;
+      (seen[k] = seen[k] || []).push(u);
+    }
+    for (var k2 in seen) {
+      if (seen[k2].length < 2) continue;
+      var names = {};
+      for (var j = 0; j < seen[k2].length; j++) names[seen[k2][j].admit] = true;
+      if (Object.keys(names).length < 2) continue;
+      for (j = 0; j < seen[k2].length; j++) seen[k2][j].dupAdmit = true;
+    }
+  }
+
+  /** 반영 규칙이 같은 모집단위는 환산 결과도 같다. 5,730개가 646가지로 줄어든다. */
+  function markRuleKeys(units) {
+    for (var i = 0; i < units.length; i++) {
+      var u = units[i];
+      u._rk = [u.univ, u.areas, u.w.join(','), u.idxKM, u.idxT, u.tCnt, u.total,
+               u.engMethod, u.hisMethod,
+               u.engPts ? u.engPts.join(',') : '', u.hisPts ? u.hisPts.join(',') : ''].join('|');
+    }
   }
 
   /* --------------------------------------------------------- 학생 성적 모델 */
@@ -236,51 +264,67 @@
   /* --------------------------------------------------------------- 평가 */
 
   function evaluate(rp) {
-    var out = [];
+    var out = [], cache = {};
     for (var i = 0; i < UNITS.length; i++) {
       var u = UNITS[i];
-      var bp = u.idxT === '변환표준' ? byunpyoSeries(u) : null;
-      var mine = E.scoreUnit(u, normsActual(u, rp, bp), rp.eng.grade, rp.hist.grade);
-
-      // 수능총점이 없거나 국·수·탐이 점수에 영향을 주지 않으면 대학별 환산을 낼 수 없다.
-      // 그래도 입시결과 비교는 가능하므로 목록에서 빼지 않는다.
-      var s0 = u.total ? E.scoreUnit(u, normsAt(u, rp, 0, bp), rp.eng.grade, rp.hist.grade).total : 0;
-      var s100 = u.total ? E.scoreUnit(u, normsAt(u, rp, 100, bp), rp.eng.grade, rp.hist.grade).total : 0;
-      var span = s100 - s0;
-      var myPct = null;
-      if (u.total && span > 1e-6) {
-        // 국·수·탐을 모두 같은 백분위로 받은 학생과 견주어, 같은 점수가 되는 백분위를 찾는다.
-        var lo = 0, hi = 100, mid, f;
-        for (var it = 0; it < 20; it++) {
-          mid = (lo + hi) / 2;
-          f = E.scoreUnit(u, normsAt(u, rp, mid, bp), rp.eng.grade, rp.hist.grade).total;
-          if (f < mine.total) lo = mid; else hi = mid;
-        }
-        myPct = (lo + hi) / 2;
+      var calc = cache[u._rk];
+      if (calc === undefined) {
+        calc = cache[u._rk] = convert(u, rp);
       }
-      var full = u.total ? E.scoreUnit(u, normsAt(u, rp, 100, bp, 1, 1), 1, 1).total : 0;
-
       var cut = u.cutPct;                       // 대학이 공개한 2025 70%컷(국수탐 백분위 평균)
       var diff = cut != null ? rp.basePct - cut : null;
-      var gain = myPct == null ? null : myPct - rp.basePct;
 
       out.push({
         u: u,
-        myScore: mine.total,
-        adjPct: myPct,          // 이 대학 반영 방식을 그대로 적용한 백분위 (참고값)
-        fullScore: full,
-        wUsed: mine.w,
-        approx: mine.approx,
+        myScore: calc.score,
+        adjPct: calc.pct,       // 이 대학 반영 방식을 그대로 적용한 백분위 (참고값)
+        fullScore: calc.full,
+        wUsed: calc.w,
+        approx: calc.approx,
         cut70p: cut,
         diff: diff,             // 판정 기준: 기준 백분위 - 70%컷
         level: judge(diff),
-        gain: gain,             // 반영 유불리
+        gain: calc.pct == null ? null : calc.pct - rp.basePct,   // 반영 유불리
         math: mathRole(u),
-        mathUsed: mine.w['수'] || 0,
+        mathUsed: calc.w['수'] || 0,
         req: checkRequirement(u, rp)
       });
     }
     return out;
+  }
+
+  /** 한 가지 반영 규칙에 대해 환산점·환산 백분위·만점을 구한다. */
+  function convert(u, rp) {
+    var bp = u.idxT === '변환표준' ? byunpyoSeries(u) : null;
+    var mine = E.scoreUnit(u, normsActual(u, rp, bp), rp.eng.grade, rp.hist.grade);
+    if (!u.total) {
+      return { score: mine.total, pct: null, full: 0, w: mine.w, approx: mine.approx };
+    }
+    // 국·수·탐이 점수에 전혀 영향을 주지 않으면 환산 백분위를 낼 수 없다.
+    var s0 = E.scoreUnit(u, normsAt(u, rp, 0, bp), rp.eng.grade, rp.hist.grade).total;
+    var s100 = E.scoreUnit(u, normsAt(u, rp, 100, bp), rp.eng.grade, rp.hist.grade).total;
+    var pct = null;
+    if (s100 - s0 > 1e-6) {
+      // 기준 백분위 학생과 점수가 같으면 유불리가 없는 것이다.
+      // 등급만 보는 대학처럼 점수가 구간마다 평평한 경우, 이분 탐색은 그 구간의
+      // 아래 끝으로 내려가 실제보다 손해 본 것처럼 보이게 한다. 그래서 먼저 확인한다.
+      var atBase = E.scoreUnit(u, normsAt(u, rp, rp.basePct, bp), rp.eng.grade, rp.hist.grade).total;
+      var tol = Math.max(1e-9, Math.abs(mine.total) * 1e-10);
+      if (Math.abs(atBase - mine.total) <= tol) {
+        pct = rp.basePct;
+      } else {
+        // 국·수·탐을 모두 같은 백분위로 받은 학생과 견주어, 같은 점수가 되는 백분위를 찾는다.
+        var lo = 0, hi = 100, mid, f;
+        for (var it = 0; it < 17; it++) {
+          mid = (lo + hi) / 2;
+          f = E.scoreUnit(u, normsAt(u, rp, mid, bp), rp.eng.grade, rp.hist.grade).total;
+          if (f < mine.total) lo = mid; else hi = mid;
+        }
+        pct = (lo + hi) / 2;
+      }
+    }
+    var full = E.scoreUnit(u, normsAt(u, rp, 100, bp, 1, 1), 1, 1).total;
+    return { score: mine.total, pct: pct, full: full, w: mine.w, approx: mine.approx };
   }
 
   // 0 위험 · 1 도전 · 2 소신 · 3 적정 · 4 안정 · -1 자료 없음

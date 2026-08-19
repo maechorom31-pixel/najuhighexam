@@ -121,7 +121,13 @@
     return norms[a];
   }
 
-  function assign(term, W, norms, used, chosen) {
+  /** 배점 목록에서 아직 안 쓴 순위의 값. 값이 하나뿐이면 몇 번이든 같은 값을 쓴다. */
+  function rankW(wl, rank) {
+    if (wl.length === 1) return wl[0];
+    return rank < wl.length ? wl[rank] : 0;
+  }
+
+  function assign(term, W, norms, used, chosen, ranks) {
     var areas = [], i;
     for (i = 0; i < term.areas.length; i++) {
       if (W[baseArea(term.areas[i])]) areas.push(term.areas[i]);
@@ -137,34 +143,41 @@
     function nv(a) { var v = areaNorm(a, norms); return v == null ? -1 : v; }
     function bySelf(a, b) { return nv(b) - nv(a); }
 
+    // 같은 배점 목록('60/40' 등)은 항 하나에서만 쓰이는 게 아니라
+    // 반영영역 전체에 걸쳐 1순위·2순위로 나뉜다. 어디까지 썼는지 이어서 센다.
     if (term.kind === 'fix') {
       for (i = 0; i < order.length; i++) {
-        var wl = W[baseArea(groups[order[i]][0])], mem = groups[order[i]].slice().sort(bySelf);
+        var gk = order[i], wl = W[baseArea(groups[gk][0])], mem = groups[gk].slice().sort(bySelf);
         for (var j = 0; j < mem.length; j++) {
-          used[mem[j]] = j < wl.length ? wl[j] : (wl.length === 1 ? wl[0] : 0);
+          used[mem[j]] = rankW(wl, ranks[gk] || 0);
+          ranks[gk] = (ranks[gk] || 0) + 1;
           chosen[baseArea(mem[j])] = true;
         }
       }
       return;
     }
     if (order.length === 1) {
-      var wl2 = W[baseArea(groups[order[0]][0])];
-      var mem2 = groups[order[0]].slice().sort(bySelf).slice(0, term.n);
+      var gk2 = order[0], wl2 = W[baseArea(groups[gk2][0])];
+      var mem2 = groups[gk2].slice().sort(bySelf).slice(0, term.n);
       for (i = 0; i < mem2.length; i++) {
-        used[mem2[i]] = term.avg ? wl2[0] / mem2.length
-                                 : (i < wl2.length ? wl2[i] : (wl2.length === 1 ? wl2[0] : 0));
+        used[mem2[i]] = term.avg ? rankW(wl2, ranks[gk2] || 0) / mem2.length
+                                 : rankW(wl2, ranks[gk2] || 0);
+        if (!term.avg) ranks[gk2] = (ranks[gk2] || 0) + 1;
         chosen[baseArea(mem2[i])] = true;
       }
+      if (term.avg) ranks[gk2] = (ranks[gk2] || 0) + 1;
       return;
     }
     var cand = [];
     for (i = 0; i < areas.length; i++) {
-      var w0 = W[baseArea(areas[i])][0];
-      cand.push({ v: w0 * Math.max(nv(areas[i]), 0), a: areas[i], w: w0 });
+      var k2 = W[baseArea(areas[i])].join('/');
+      var w0 = rankW(W[baseArea(areas[i])], ranks[k2] || 0);
+      cand.push({ v: w0 * Math.max(nv(areas[i]), 0), a: areas[i], w: w0, k: k2 });
     }
     cand.sort(function (x, y) { return y.v - x.v; });
     for (i = 0; i < Math.min(term.n, cand.length); i++) {
       used[cand[i].a] = cand[i].w;
+      ranks[cand[i].k] = (ranks[cand[i].k] || 0) + 1;
       chosen[baseArea(cand[i].a)] = true;
     }
   }
@@ -182,17 +195,17 @@
       terms = [{ kind: 'fix', areas: ar, n: ar.length, avg: false }];
     }
 
-    var used = {}, chosen = {}, rest = [];
+    var used = {}, chosen = {}, rest = [], ranks = {};
     for (i = 0; i < terms.length; i++) {
       if (terms[i].kind === 'rest') rest.push(terms[i]);
-      else assign(terms[i], W, norms, used, chosen);
+      else assign(terms[i], W, norms, used, chosen, ranks);
     }
     for (i = 0; i < rest.length; i++) {
       var pool = [];
       ['국', '수', '영', '탐@1', '한', '외'].forEach(function (a) {
         if (!chosen[baseArea(a)] && W[baseArea(a)]) pool.push(a);
       });
-      assign({ kind: 'pick', areas: pool, n: rest[i].n, avg: rest[i].avg }, W, norms, used, chosen);
+      assign({ kind: 'pick', areas: pool, n: rest[i].n, avg: rest[i].avg }, W, norms, used, chosen, ranks);
     }
 
     var em = u.engMethod || '', hm = u.hisMethod || '';
