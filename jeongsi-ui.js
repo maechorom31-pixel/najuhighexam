@@ -11,7 +11,7 @@
     univ: '', unit: '', minN: 0, sort: 'cut',
     zone: {}, term: {}, track: { '인문': true, '자연': true, '의약학': true, '공통': true },
     level: { '4': true, '3': true, '2': true }, mathMode: 'any',
-    admit: '', maxRate: 0, gainMode: 'any',
+    admit: '', maxRate: 0, gainMode: 'any', relMode: 'any',
     reqOnly: true, cutOnly: true, cartOnly: false,
     limit: 120,
     results: [], rp: null, cart: {}
@@ -40,6 +40,7 @@
   var MATHMODES = [['any', '전체'], ['none', '미반영'], ['opt', '미반영·선택'], ['w20', '20% 이하'], ['w30', '30% 이하']];
   var RATES = [[0, '제한 없음'], [3, '3:1 이하'], [5, '5:1 이하'], [8, '8:1 이하'], [12, '12:1 이하']];
   var GAINS = [['any', '제한 없음'], ['plus', '유리한 곳만'], ['nominus', '불리한 곳 빼기']];
+  var RELS = [['any', '제한 없음'], ['2', '안정만'], ['12', '보통 이상']];
   var SORTS = [
     ['cut', '입시결과 높은 순'],
     ['diff', '내 성적과 가까운 순'],
@@ -199,6 +200,59 @@
     function item(t, v) { return '<div><dt>' + t + '</dt><dd class="num">' + v + '</dd></div>'; }
   }
 
+  /* ------------------------------------------------- 내 위치 지도 */
+
+  var BIN = 5;   // 백분위 5점 구간
+
+  function renderCompass() {
+    var rp = state.rp, bins = [], i;
+    for (i = 0; i < 100 / BIN; i++) bins.push(0);
+    var withCut = 0, reach = 0;
+    for (i = 0; i < state.results.length; i++) {
+      var r = state.results[i];
+      if (r.cut70p == null || r.u.track === '예체능') continue;
+      withCut++;
+      bins[Math.min(bins.length - 1, Math.floor(r.cut70p / BIN))]++;
+      if (r.level >= 2) reach++;
+    }
+    if (!withCut) { $('compass').innerHTML = ''; return; }
+
+    // 막대와 기준선만 SVG로 그린다. 글자를 SVG에 넣으면 가로로 늘릴 때 함께 찌그러진다.
+    var W = 1000, H = 100, maxV = Math.max.apply(null, bins);
+    var barW = W / bins.length, gap = 3, x0 = rp.basePct / 100 * W;
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" ' +
+      'aria-label="2025학년도 70%컷 백분위 분포. 기준 백분위 ' + f1(rp.basePct) +
+      ' 이하 구간에 ' + reach + '곳이 있습니다.">';
+    for (i = 0; i < bins.length; i++) {
+      var hgt = maxV ? (H - 2) * bins[i] / maxV : 0;
+      var lo = i * BIN;
+      svg += '<rect x="' + (i * barW + gap / 2).toFixed(1) + '" y="' + (H - Math.max(hgt, bins[i] ? 1.5 : 0)).toFixed(1) +
+        '" width="' + (barW - gap).toFixed(1) + '" height="' + Math.max(hgt, bins[i] ? 1.5 : 0).toFixed(1) +
+        '" fill="' + (lo + BIN <= rp.basePct + 0.5 ? '#F59E0B' : '#DDD9D2') + '">' +
+        '<title>백분위 ' + lo + '~' + (lo + BIN) + ' · 모집단위 ' + bins[i].toLocaleString() + '곳</title></rect>';
+    }
+    svg += '<line x1="' + x0.toFixed(1) + '" y1="0" x2="' + x0.toFixed(1) +
+      '" y2="' + H + '" stroke="#B45309" stroke-width="3" vector-effect="non-scaling-stroke"/></svg>';
+
+    var side = rp.basePct > 70 ? 'right:' + (100 - rp.basePct).toFixed(1) + '%' : 'left:' + rp.basePct.toFixed(1) + '%';
+    var ticks = [0, 20, 40, 60, 80, 100].map(function (t) {
+      return '<span style="left:' + t + '%">' + t + '</span>';
+    }).join('');
+
+    $('compass').innerHTML =
+      '<figure class="compass" style="margin:0">' +
+      '<h3>전국 정시 지형에서 내 위치</h3>' +
+      '<p class="lede" style="font-size:12.5px">2025학년도 70%컷 백분위로 본 모집단위 분포입니다(예체능 제외).</p>' +
+      '<p class="hero">' + reach.toLocaleString() + '곳 <span style="font-size:13px;font-weight:400;color:#6B6B6B">' +
+        '· 입시결과가 있는 ' + withCut.toLocaleString() + '곳의 ' + Math.round(reach / withCut * 100) + '%</span></p>' +
+      '<p class="heroSub">기준 백분위 <span class="num">' + f1(rp.basePct) + '</span>' + josaRo(f1(rp.basePct)) +
+        ' 소신 이상이 나오는 모집단위 수입니다. 앰버로 채운 구간이 내 기준 백분위 아래, 회색이 위입니다.</p>' +
+      '<div class="plot"><div class="mine" style="' + side + '">내 ' + f1(rp.basePct) + '</div>' + svg +
+      '<div class="ticks">' + ticks + '</div></div>' +
+      '<figcaption>가로축 = 2025학년도 70%컷 백분위 · 세로축 = 모집단위 수 · 막대에 손을 올리면 구간별 개수가 보입니다.</figcaption>' +
+      '</figure>';
+  }
+
   /* -------------------------------------------------------------- 필터 UI */
 
   function renderFilters() {
@@ -211,6 +265,9 @@
     }).join('');
     $('f-gain').innerHTML = GAINS.map(function (o) {
       return '<option value="' + o[0] + '"' + (o[0] === state.gainMode ? ' selected' : '') + '>' + o[1] + '</option>';
+    }).join('');
+    $('f-rel').innerHTML = RELS.map(function (o) {
+      return '<option value="' + o[0] + '"' + (o[0] === state.relMode ? ' selected' : '') + '>' + o[1] + '</option>';
     }).join('');
     $('f-sort').innerHTML = SORTS.map(function (o) {
       return '<option value="' + o[0] + '"' + (o[0] === state.sort ? ' selected' : '') + '>' + o[1] + '</option>';
@@ -286,6 +343,7 @@
         var rate = u.compete && u.compete[0];
         if (rate == null || rate > state.maxRate) continue;
       }
+      if (state.relMode !== 'any' && state.relMode.indexOf(String(r.rel.level)) < 0) continue;
       if (state.gainMode === 'plus' && !(r.gain != null && r.gain >= 1.5)) continue;
       if (state.gainMode === 'nominus' && r.gain != null && r.gain <= -1.5) continue;
       if (state.mathMode !== 'any') {
@@ -333,6 +391,15 @@
     return '<span class="lv' + r.level + '">' + gauge(r.level) +
            '<span class="lv-name">' + A.LEVEL_NAME[r.level] + '</span></span>';
   }
+  /** 경쟁률은 추가합격을 빼고 봐야 실제 문턱이 보인다. */
+  function rateCell(r) {
+    var c = r.u.compete || [];
+    if (c[0] == null) return '–';
+    if (c[2] == null) return '<span class="num">' + f1(c[0]) + '</span>';
+    return '<span class="num">' + f1(c[0]) +
+           '<span style="color:#6B6B6B"> (' + f1(c[2]) + ')</span></span>';
+  }
+
   function gainCell(r) {
     if (r.gain == null) return '–';
     if (r.gain >= 1.5) return '<span class="tag">유리 ' + sgn(r.gain) + '</span>';
@@ -341,6 +408,41 @@
   }
 
   var BOOKMARK = '<svg viewBox="0 0 12 16" aria-hidden="true"><path d="M1.5 1.5h9v13l-4.5-3.6-4.5 3.6z"/></svg>';
+  var REL_NAME = ['주의', '보통', '안정'];
+
+  /** 모집인원 옆에 입시결과 신뢰도를 세 칸 게이지로 붙인다. */
+  function seatCell(r) {
+    var n = r.u.n26, lv = r.rel.level, i, g = '';
+    for (i = 0; i < 3; i++) g += '<i class="' + (i <= lv ? 'on' : '') + '"></i>';
+    return '<span class="num">' + (n == null ? '–' : n) + '</span>' +
+           '<span class="relg" title="입시결과 신뢰도 ' + REL_NAME[lv] + ' (' + r.rel.score + '점)' +
+           (r.rel.why.length ? ' · ' + r.rel.why.join(' · ') : '') + '" aria-label="신뢰도 ' +
+           REL_NAME[lv] + '">' + g + '</span>';
+  }
+
+  function relText(r) {
+    var t = '<b>' + REL_NAME[r.rel.level] + '</b> (' + r.rel.score + '점)';
+    if (!r.rel.why.length) return t + ' — 깎을 만한 자리가 없습니다.';
+    return t + '<br><span style="color:#2B2B2B">· ' + r.rel.why.map(esc).join('<br>· ') + '</span>';
+  }
+
+  /** 군이 바뀌면 지원자 풀이 통째로 달라진다. */
+  function moveText(u) {
+    var m = u.move, names = ['가', '나', '다'], out = [], big = [];
+    for (var i = 0; i < 3; i++) {
+      if (m.y26[i] == null && m.y25[i] == null) continue;
+      var d = m.diff[i] || 0;
+      out.push(names[i] + '군 ' + (m.y26[i] || 0) + '명' +
+               (d ? ' <span style="color:#6B6B6B">(' + (d > 0 ? '+' : '') + d + ')</span>' : ''));
+      if (Math.abs(d) >= 50) big.push(names[i] + '군 ' + (d > 0 ? '+' : '') + d + '명');
+    }
+    var t = out.join(' · ');
+    if (big.length) {
+      t += '<br><span class="warn">' + esc(big.join(', ')) +
+           ' — 군이 크게 옮겨 가 지원자 구성이 달라집니다.</span>';
+    }
+    return t;
+  }
 
   function keepCell(r) {
     var on = !!state.cart[cartKey(r.u)];
@@ -396,10 +498,10 @@
     var shown = rows.slice(0, state.limit);
     var h = '<div class="tablewrap"><table><thead><tr>' +
       '<th>군</th><th>대학</th><th>모집단위</th><th>계열</th>' +
-      '<th class="n">모집</th><th class="n">2025<br>70%컷</th><th class="n">내 기준<br>대비</th>' +
+      '<th class="n">모집<br>·신뢰도</th><th class="n">2025<br>70%컷</th><th class="n">내 기준<br>대비</th>' +
       '<th>가능성</th><th class="n">반영<br>유불리</th>' +
       '<th class="n rt">국어</th><th class="n rt">수학</th><th class="n rt">영어</th><th class="n rt">탐구</th>' +
-      '<th class="n rt">기타</th><th class="n">2025<br>경쟁률</th><th>관심</th>' +
+      '<th class="n rt">기타</th><th class="n">경쟁률<br>(실질)</th><th>관심</th>' +
       '</tr></thead><tbody>';
     for (var i = 0; i < shown.length; i++) {
       var r = shown[i], u = r.u;
@@ -411,12 +513,12 @@
           (u.major ? ' <span class="tag plain">세부</span>' : '') +
           (!r.req.ok ? ' <span class="warn">지정과목 확인</span>' : '') + '</button></td>' +
         '<td>' + esc(u.track) + '</td>' +
-        '<td class="n">' + (u.n26 == null ? '–' : u.n26) + '</td>' +
+        '<td class="n">' + seatCell(r) + '</td>' +
         '<td class="n">' + f1(r.cut70p) + '</td>' +
         '<td class="n">' + sgn(r.diff) + '</td>' +
         '<td>' + levelCell(r) + '</td>' +
         '<td class="n">' + gainCell(r) + '</td>' + ratioCells(r) +
-        '<td class="n">' + (u.compete && u.compete[0] != null ? f1(u.compete[0]) : '–') + '</td>' +
+        '<td class="n">' + rateCell(r) + '</td>' +
         '<td class="noprint">' + keepCell(r) + '</td></tr>';
       h += '<tr class="det" id="det-' + i + '" hidden><td colspan="16">' + detail(r) + '</td></tr>';
     }
@@ -677,9 +779,15 @@
              (u.cut70 != null ? ' · 대학 자체 환산점 ' + (u.cut50 != null ? u.cut50 + '(50%) / ' : '') + u.cut70 + '(70%)' : ''));
     h += row('모집인원', '2026 ' + (u.n26 == null ? '–' : u.n26) + '명 · 2025 최종 ' +
              (u.nf25 == null ? '–' : u.nf25) + '명(이월 ' + (u.carry25 == null ? '–' : u.carry25) + '명)');
-    h += row('경쟁률 · 충원율', '2025 ' + (c[0] == null ? '–' : f1(c[0])) + ':1 / 충원 ' +
-             (c[1] == null ? '–' : f1(c[1] * 100) + '%') + ' · 2024 ' +
-             (c[2] == null ? '–' : f1(c[2])) + ':1 / 충원 ' + (c[3] == null ? '–' : f1(c[3] * 100) + '%'));
+    h += row('경쟁률 · 충원율',
+             '2025 ' + (c[0] == null ? '–' : f1(c[0])) + ':1' +
+             (c[2] != null ? ' <span style="color:#6B6B6B">(실질 ' + f1(c[2]) + ':1)</span>' : '') +
+             ' / 충원 ' + (c[1] == null ? '–' : f1(c[1] * 100) + '%') +
+             ' · 2024 ' + (c[3] == null ? '–' : f1(c[3])) + ':1' +
+             (c[5] != null ? ' <span style="color:#6B6B6B">(실질 ' + f1(c[5]) + ':1)</span>' : '') +
+             ' / 충원 ' + (c[4] == null ? '–' : f1(c[4] * 100) + '%'));
+    h += row('입시결과 신뢰도', relText(r));
+    if (u.move) h += row('올해 군별 정원', moveText(u));
     if (u.bonus || u.bonusArea) h += row('가산점', esc((u.bonusArea ? '[' + u.bonusArea + '] ' : '') + u.bonus));
     if (u.chgAdmit || u.chgUnit || u.ratioChanged === 'O') {
       h += row('올해 변화', [u.chgAdmit ? '전형 변경' : '', u.chgUnit ? '모집단위 변경' : '',
@@ -775,11 +883,11 @@
       h += '<div class="cartgroup"><h3>' + t + '군</h3><p class="sub">' + rows.length + '곳 · ' +
            rows.filter(function (r) { return r.level >= 3; }).length + '곳이 적정 이상</p>';
       h += '<div class="tablewrap"><table><thead><tr>' +
-        '<th>대학</th><th>모집단위</th><th class="nw">계열</th><th class="n">모집</th>' +
+        '<th>대학</th><th>모집단위</th><th class="nw">계열</th><th class="n">모집<br>·신뢰도</th>' +
         '<th class="n">2025<br>70%컷</th><th class="n">내 기준<br>대비</th><th>가능성</th>' +
         '<th class="n">반영<br>유불리</th>' +
         '<th class="n rt">국어</th><th class="n rt">수학</th><th class="n rt">영어</th><th class="n rt">탐구</th>' +
-        '<th class="n rt">기타</th><th class="n">2025<br>경쟁률</th><th class="n">2025<br>충원율</th>' +
+        '<th class="n rt">기타</th><th class="n">경쟁률<br>(실질)</th><th class="n">2025<br>충원율</th>' +
         '<th class="noprint">관심</th></tr></thead><tbody>';
       rows.forEach(function (r) {
         var u = r.u, c = u.compete || [];
@@ -787,12 +895,12 @@
           '<td class="major">' + esc(tie(u.unit)) +
             (u.dupAdmit ? ' <span class="tag plain">' + esc(u.admit) + '</span>' : '') + '</td>' +
           '<td class="nw">' + esc(u.track) + '</td>' +
-          '<td class="n">' + (u.n26 == null ? '–' : u.n26) + '</td>' +
+          '<td class="n">' + seatCell(r) + '</td>' +
           '<td class="n">' + f1(r.cut70p) + '</td>' +
           '<td class="n">' + sgn(r.diff) + '</td>' +
           '<td>' + levelCell(r) + '</td>' +
           '<td class="n">' + gainCell(r) + '</td>' + ratioCells(r) +
-          '<td class="n">' + (c[0] == null ? '–' : f1(c[0])) + '</td>' +
+          '<td class="n">' + rateCell(r) + '</td>' +
           '<td class="n">' + (c[1] == null ? '–' : f1(c[1] * 100) + '%') + '</td>' +
           '<td class="noprint">' + keepCell(r) + '</td></tr>';
       });
@@ -823,6 +931,7 @@
     state.results = A.evaluate(state.rp);
     updateHints();
     renderSummary();
+    renderCompass();
     state.limit = 120;
     draw();
   }
@@ -860,6 +969,7 @@
     $('f-admit').addEventListener('input', function () { state.admit = this.value; state.limit = 120; draw(); });
     $('f-rate').addEventListener('change', function () { state.maxRate = +this.value; state.limit = 120; draw(); });
     $('f-gain').addEventListener('change', function () { state.gainMode = this.value; state.limit = 120; draw(); });
+    $('f-rel').addEventListener('change', function () { state.relMode = this.value; state.limit = 120; draw(); });
     $('f-cart').addEventListener('change', function () { state.cartOnly = this.checked; state.limit = 120; draw(); });
     $('f-unit').addEventListener('input', function () { state.unit = this.value; state.limit = 120; draw(); });
     $('f-min').addEventListener('change', function () { state.minN = +this.value; state.limit = 120; draw(); });

@@ -40,8 +40,8 @@
 
   function load() {
     return Promise.all([
-      fetch('data/jeongsi/meta.json?v=2').then(function (r) { return r.json(); }),
-      fetch('data/jeongsi/units.json?v=2').then(function (r) { return r.json(); })
+      fetch('data/jeongsi/meta.json?v=3').then(function (r) { return r.json(); }),
+      fetch('data/jeongsi/units.json?v=3').then(function (r) { return r.json(); })
     ]).then(function (res) {
       META = res[0];
       UNITS = expand(res[1]);
@@ -276,6 +276,99 @@
     });
   }
 
+  /* ------------------------------------------------- 입결 신뢰도 */
+
+  /* 이 자료로 확인한 사실: 2026 모집인원이 적을수록 최근 3개년 경쟁률이 크게 흔들린다.
+     경쟁률 변동계수 중앙값은 1~2명 27.5%, 3~5명 18.8%, 6~10명 15.0%,
+     11~20명 13.2%, 21~50명 11.0%, 51명 이상 9.1%. 감점 폭을 여기에 맞췄다. */
+  function seatPenalty(n) {
+    if (n == null) return 8;
+    if (n <= 2) return 35;
+    if (n <= 5) return 20;
+    if (n <= 10) return 10;
+    if (n <= 20) return 4;
+    return 0;
+  }
+
+  /** 최근 3개년 경쟁률의 변동계수(표준편차 ÷ 평균). */
+  function rateCV(c) {
+    if (!c) return null;
+    var v = [];
+    [0, 3, 6].forEach(function (i) { if (c[i] != null && c[i] > 0) v.push(c[i]); });
+    if (v.length < 2) return null;
+    var m = 0, i;
+    for (i = 0; i < v.length; i++) m += v[i];
+    m /= v.length;
+    if (!m) return null;
+    var s2 = 0;
+    for (i = 0; i < v.length; i++) s2 += (v[i] - m) * (v[i] - m);
+    return Math.sqrt(s2 / v.length) / m;
+  }
+
+  /** 입시결과를 얼마나 믿을 수 있는지. 100점에서 깎아 내려간다. */
+  function reliability(u) {
+    if (u._rel) return u._rel;
+    var score = 100, why = [];
+    var isNew = /신설/.test(u.chgAdmit || '') || /신설/.test(u.chgUnit || '');
+
+    if (isNew) { score -= 40; why.push('올해 신설이라 견줄 작년 자료가 없습니다'); }
+
+    var sp = seatPenalty(u.n26);
+    if (sp >= 35) { score -= sp; why.push('모집인원이 ' + u.n26 + '명뿐이라 해마다 결과가 크게 출렁입니다'); }
+    else if (sp >= 20) { score -= sp; why.push('모집인원 ' + u.n26 + '명은 적은 편이라 변동이 큽니다'); }
+    else if (sp >= 10) { score -= sp; why.push('모집인원 ' + u.n26 + '명으로 변동이 있는 편입니다'); }
+    else if (sp > 0) { score -= sp; }
+
+    var cv = rateCV(u.compete);
+    if (cv != null) {
+      if (cv >= 0.30) { score -= 15; why.push('최근 3년 경쟁률이 ' + Math.round(cv * 100) + '%나 출렁였습니다'); }
+      else if (cv >= 0.20) { score -= 8; why.push('최근 3년 경쟁률 변동이 ' + Math.round(cv * 100) + '%로 큰 편입니다'); }
+      else if (cv >= 0.10) { score -= 3; }
+    } else if (!isNew) {
+      score -= 5; why.push('지난 경쟁률 자료가 모자랍니다');
+    }
+
+    // 이름만 바뀐 것과 방법이 바뀐 것은 무게가 다르다.
+    var chg = [], cut = 0;
+    function weigh(label, kind) {
+      if (!kind) return;
+      var w = /명칭/.test(kind) ? 3 : /방법|반영/.test(kind) ? 10 : 8;
+      chg.push(label + ' ' + kind);
+      cut += w;
+    }
+    if (!isNew) { weigh('전형', u.chgAdmit); weigh('모집단위', u.chgUnit); }
+    if (u.ratioChanged === 'O') { chg.push('반영비율 변경'); cut += 10; }
+    if (chg.length) {
+      score -= Math.min(20, cut);
+      why.push('올해 바뀐 점 — ' + chg.join(', ') + '. 작년 결과를 그대로 대기는 어렵습니다');
+    }
+
+    if (u.carry25 != null && u.nf25) {
+      var carry = u.carry25 / u.nf25;
+      if (carry >= 0.5) {
+        score -= 10;
+        why.push('작년 최종 인원의 ' + Math.round(carry * 100) + '%가 수시 이월이라 그해 사정이 특수했습니다');
+      }
+    }
+
+    if (u.n26 != null && u.n25) {
+      var d = (u.n26 - u.n25) / u.n25;
+      if (Math.abs(d) >= 0.3) {
+        score -= 10;
+        why.push('모집인원이 작년보다 ' + (d > 0 ? '늘어' : '줄어') + ' ' +
+                 (d > 0 ? '+' : '') + Math.round(d * 100) + '%입니다');
+      }
+    }
+
+    if (u.match && u.match !== 'exact') {
+      score -= 8; why.push('반영비율을 같은 대학의 다른 전형에서 끌어와 맞췄습니다');
+    }
+
+    score = Math.max(0, Math.min(100, score));
+    var level = score >= 80 ? 2 : score >= 60 ? 1 : 0;   // 2 안정 · 1 보통 · 0 주의
+    return (u._rel = { score: score, level: level, why: why, cv: cv, isNew: isNew });
+  }
+
   /* --------------------------------------------------------------- 평가 */
 
   function evaluate(rp) {
@@ -303,6 +396,7 @@
         gain: calc.pct == null ? null : calc.pct - rp.basePct,   // 반영 유불리
         math: roles['수'],
         roles: roles,
+        rel: reliability(u),
         mathUsed: calc.w['수'] || 0,
         req: checkRequirement(u, rp)
       });
@@ -364,6 +458,7 @@
     evaluate: evaluate,
     mathRole: mathRole,
     areaRole: areaRole,
+    reliability: reliability,
     LEVEL_NAME: LEVEL_NAME,
     SATAM: SATAM, GWATAM: GWATAM, MATH_TYPES: MATH_TYPES,
     units: function () { return UNITS; },

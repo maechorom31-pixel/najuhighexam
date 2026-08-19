@@ -225,14 +225,41 @@ def read_ratio_sheet(wb, sheet, year=2026):
 
 
 def read_compete(wb):
-    """'경쟁률|충원율' 시트: 최근 3개년 경쟁률/충원율."""
+    """'경쟁률|충원율' 시트: 최근 3개년 경쟁률·충원율·실질경쟁률.
+
+    실질경쟁률 = 경쟁률 / (1 + 충원율). 추가합격이 도는 만큼 실제 문턱은 낮아진다.
+    """
     ws = wb['경쟁률|충원율 ']
     out = {}
     for r in ws.iter_rows(min_row=9, values_only=True):
         if not s(r[10]):
             continue
         k = key(r[10], '', r[11], r[12])
-        out[k] = [num(r[14]), num(r[15]), num(r[18]), num(r[19]), num(r[22]), num(r[23])]
+        out[k] = [num(r[14]), num(r[15]), num(r[16]),      # 2025 경쟁률·충원율·실질
+                  num(r[18]), num(r[19]), num(r[20]),      # 2024
+                  num(r[22]), num(r[23]), num(r[24])]      # 2023
+    return out
+
+
+def read_move(wb):
+    """'군이동' 시트: 대학별 가·나·다군 모집정원 증감.
+
+    군이 바뀌면 지원자 풀이 통째로 달라져 입시결과가 크게 흔들린다.
+    """
+    ws = wb['군이동']
+    out = {}
+    for r in ws.iter_rows(min_row=9, values_only=True):
+        name = s(r[2])
+        if not name or name == '*':
+            continue
+        out[name] = {
+            'pct': num(r[3]),                                    # 대학 전체 70%컷 백분위 평균
+            'seats': num(r[4]), 'seatDiff': num(r[5]),
+            'y26': [num(r[6]), num(r[7]), num(r[8])],            # 2026 가·나·다
+            'y25': [num(r[9]), num(r[10]), num(r[11])],
+            'diff': [num(r[12]), num(r[13]), num(r[14])],
+            'termPct': [num(r[18]), num(r[19]), num(r[20])],     # 군별 백분위 평균
+        }
     return out
 
 
@@ -252,6 +279,7 @@ def build(xlsx_path, out_dir):
     ratio_unit = read_ratio_sheet(wb, '반영비율(모집단위)')
     ratio_track = read_ratio_sheet(wb, '반영비율(모집계열)')
     compete = read_compete(wb)
+    move = read_move(wb)
 
     # 폴백용 인덱스: (대학, 군, 모집단위) / (대학, 군, 전형) / (대학, 군)
     idx_unit = defaultdict(list)
@@ -331,7 +359,7 @@ def build(xlsx_path, out_dir):
         stat[how or 'none'] += 1
         e = lookup_pts(eng, k) or {}
         h = lookup_pts(his, k) or {}
-        cp = compete.get(key(r[3], '', r[5], r[6])) or [None] * 6
+        cp = compete.get(key(r[3], '', r[5], r[6])) or [None] * 9
 
         units.append({
             'zone': s(r[0]), 'region': s(r[1]), 'city': s(r[2]),
@@ -370,6 +398,7 @@ def build(xlsx_path, out_dir):
             'hisPts': h.get('pts'),
             'match': how or '',
             'compete': cp,
+            'move': move.get(s(r[3])),
         })
 
     print('반영비율 매칭:', stat.most_common())
@@ -404,13 +433,13 @@ COLS = ['zone', 'region', 'city', 'univ', 'term', 'admit', 'unit', 'major', 'tra
         'total', 'totalAll', 'cut50', 'cut70', 'cutPct',
         'n25', 'carry25', 'nf25', 'rate25', 'fill25', 'rate24', 'fill24',
         'chgAdmit', 'chgUnit', 'ratioChanged', 'freeMajor', 'method',
-        'memo', 'note', 'bonus', 'bonusArea', 'match', 'compete']
+        'memo', 'note', 'bonus', 'bonusArea', 'match', 'compete', 'move']
 
 DICT_COLS = {'zone', 'region', 'city', 'univ', 'term', 'admit', 'unit', 'major', 'track',
              'idxKM', 'idxT', 'areas', 'w', 'reqMath', 'reqTam', 'engMethod', 'engPts',
              'engImpact', 'hisMethod', 'hisPts', 'method', 'memo', 'note', 'bonus',
              'bonusArea', 'chgAdmit', 'chgUnit', 'ratioChanged', 'freeMajor', 'match',
-             'compete'}
+             'compete', 'move'}
 
 
 def compact(units):
