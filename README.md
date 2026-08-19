@@ -201,4 +201,5 @@ python3 tools/build_jeongsi.py <자료.xlsx> data/jeongsi
 | `jeongsi-app.js` | 성적 모델, 지표 정규화, 판정 |
 | `jeongsi-ui.js` | 입력·필터·표·카드 렌더링 |
 | `tools/build_jeongsi.py` | 정시 자료 엑셀 → JSON 변환기 |
+| `DESIGN.md` | 화면 설계 토큰(색·글자 크기·간격·z-index) |
 | `data/jeongsi/*.json` | 변환된 자료 |

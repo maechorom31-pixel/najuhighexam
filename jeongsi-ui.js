@@ -297,7 +297,7 @@
       '<h3>전국 정시 지형에서 내 위치</h3>' +
       '<p class="lede" style="font-size:12.5px">2025학년도 70%컷 백분위로 본 모집단위 분포입니다. ' +
         '지정과목을 채우는 곳만 세었고 예체능은 뺐습니다.</p>' +
-      '<p class="hero">' + reach.toLocaleString() + '곳 <span style="font-size:13px;font-weight:400;color:#6B6B6B">' +
+      '<p class="hero">' + reach.toLocaleString() + '곳 <span class="heroUnit">' +
         '· 입시결과가 있는 ' + withCut.toLocaleString() + '곳의 ' + Math.round(reach / withCut * 100) + '%</span></p>' +
       '<p class="heroSub">기준 백분위 <span class="num">' + f1(rp.basePct) + '</span>' + josaRo(f1(rp.basePct)) +
         ' 소신 이상이 나오는 모집단위 수입니다. 앰버로 채운 구간이 내 기준 백분위 아래, 회색이 위입니다.</p>' +
@@ -441,7 +441,7 @@
     return h + '</span>';
   }
   function levelCell(r) {
-    if (r.level < 0) return '<span class="lv-name" style="color:#6B6B6B">자료 없음</span>';
+    if (r.level < 0) return '<span class="lv-name" class="sub">자료 없음</span>';
     return '<span class="lv' + r.level + '">' + gauge(r.level) +
            '<span class="lv-name">' + A.LEVEL_NAME[r.level] + '</span></span>';
   }
@@ -452,7 +452,7 @@
     if (c[2] == null) return '<span class="num">' + f1(c[0]) + '</span>';
     // 두 줄로 나눠야 열이 좁아져 표가 화면 안에 들어온다
     return '<span class="num">' + f1(c[0]) +
-           '<br><span style="color:#6B6B6B">(' + f1(c[2]) + ')</span></span>';
+           '<br><span class="sub">(' + f1(c[2]) + ')</span></span>';
   }
 
   function gainCell(r) {
@@ -478,7 +478,7 @@
   function relText(r) {
     var t = '<b>' + REL_NAME[r.rel.level] + '</b> (' + r.rel.score + '점)';
     if (!r.rel.why.length) return t + ' — 깎을 만한 자리가 없습니다.';
-    return t + '<br><span style="color:#2B2B2B">· ' + r.rel.why.map(esc).join('<br>· ') + '</span>';
+    return t + '<br><span class="ink2">· ' + r.rel.why.map(esc).join('<br>· ') + '</span>';
   }
 
   /** 군이 바뀌면 지원자 풀이 통째로 달라진다. */
@@ -488,7 +488,7 @@
       if (m.y26[i] == null && m.y25[i] == null) continue;
       var d = m.diff[i] || 0;
       out.push(names[i] + '군 ' + (m.y26[i] || 0) + '명' +
-               (d ? ' <span style="color:#6B6B6B">(' + (d > 0 ? '+' : '') + d + ')</span>' : ''));
+               (d ? ' <span class="sub">(' + (d > 0 ? '+' : '') + d + ')</span>' : ''));
       if (Math.abs(d) >= 50) big.push(names[i] + '군 ' + (d > 0 ? '+' : '') + d + '명');
     }
     var t = out.join(' · ');
@@ -499,38 +499,40 @@
     return t;
   }
 
-  function keepCell(r) {
+  function keepBtn(r, extra) {
     var on = !!state.cart[cartKey(r.u)];
-    return '<button type="button" class="keep" data-k="' + esc(cartKey(r.u)) + '" aria-pressed="' +
-           (on ? 'true' : 'false') + '" title="' + (on ? '관심 목록에서 빼기' : '관심 목록에 담기') +
-           '" aria-label="' + esc(r.u.univ + ' ' + r.u.unit) + (on ? ' 관심 목록에서 빼기' : ' 관심 목록에 담기') +
-           '">' + BOOKMARK + '</button>';
+    return '<button type="button" class="keep' + (extra ? ' ' + extra : '') +
+           '" data-k="' + esc(cartKey(r.u)) + '" aria-pressed="' + (on ? 'true' : 'false') +
+           '" title="' + (on ? '관심 목록에서 빼기' : '관심 목록에 담기') +
+           '" aria-label="' + esc(r.u.univ + ' ' + r.u.unit) +
+           (on ? ' 관심 목록에서 빼기' : ' 관심 목록에 담기') + '">' + BOOKMARK + '</button>';
   }
+  function keepCell(r) { return keepBtn(r); }
 
   /* 반영비율 한 칸. 이 성적에 실제로 적용된 값을 보이고,
      골라서 반영하는 영역은 별표로 구분한다. */
   function ratioCell(r, area) {
     var role = r.roles ? r.roles[area] : null, used = r.wUsed[area];
     if (!role || role.role === '미반영') {
-      return '<span style="color:#6B6B6B">–</span>';
+      return '<span class="sub">–</span>';
     }
     if (role.role === '선택') {
       if (used) {
         return '<span class="num">' + f1(used) + '<span class="opt">*</span></span>';
       }
       // 배점 0은 뽑히지 않았다는 뜻이다.
-      return '<span class="num" style="color:#6B6B6B" title="골라서 반영하는 영역 · 최대 ' +
+      return '<span class="num sub" title="골라서 반영하는 영역 · 최대 ' +
              f1(role.max) + '%. 이 성적에서는 빠졌습니다.">–<span class="opt">*</span></span>';
     }
     var v = used != null ? used : role.max;
-    if (!v) return '<span style="color:#6B6B6B">–</span>';
+    if (!v) return '<span class="sub">–</span>';
     return '<span class="num">' + f1(v) + '</span>';
   }
 
   /** 한국사·제2외국어는 자리를 많이 차지하지 않게 한 칸으로 묶는다. */
   function etcCell(r) {
     var v = (r.wUsed['한'] || 0) + (r.wUsed['외'] || 0);
-    if (!v) return '<span style="color:#6B6B6B">–</span>';
+    if (!v) return '<span class="sub">–</span>';
     var what = [];
     if (r.wUsed['한']) what.push('한국사 ' + f1(r.wUsed['한']) + '%');
     if (r.wUsed['외']) what.push('제2외국어 ' + f1(r.wUsed['외']) + '%');
@@ -611,12 +613,13 @@
       var r = shown[i], u = r.u;
       h += '<tr class="main"><td>' + esc(u.term) + '</td>' +
         '<td class="uni">' + esc(u.univ) + '</td>' +
-        '<td class="major"><button type="button" class="rowbtn" data-i="' + i + '">' +
+        '<td class="major"><button type="button" class="rowbtn" data-i="' + i +
+          '" aria-expanded="false" aria-controls="det-' + i + '">' +
           esc(tie(u.unit)) +
           (u.dupAdmit ? ' <span class="tag plain">' + esc(u.admit) + '</span>' : '') +
           (u.major ? ' <span class="tag plain">세부</span>' : '') +
           (!r.req.ok ? ' <span class="warn">지정과목 확인</span>' : '') +
-          miniLine(r) + '</button></td>' +
+          miniLine(r) + '</button>' + keepBtn(r, 'keep-inline') + '</td>' +
         '<td class="nw fold">' + esc(u.track) + '</td>' +
         '<td class="n">' + seatCell(r) + '</td>' +
         '<td class="n">' + f1(r.cut70p) + '</td>' +
@@ -634,8 +637,8 @@
     }
     h += '<p class="note"><strong>국어·수학·영어·탐구</strong> 칸은 이 성적에 실제로 적용된 반영비율(%)입니다. ' +
          '<span class="opt">*</span>는 대학이 골라서 반영하는 영역이라는 뜻으로, ' +
-         '<span class="opt">*</span>가 붙은 <span style="color:#6B6B6B">–</span>는 더 잘한 영역이 대신 들어가 빠졌다는 표시입니다. ' +
-         '<span style="color:#6B6B6B">–</span>만 있으면 그 대학이 아예 반영하지 않습니다. ' +
+         '<span class="opt">*</span>가 붙은 <span class="sub">–</span>는 더 잘한 영역이 대신 들어가 빠졌다는 표시입니다. ' +
+         '<span class="sub">–</span>만 있으면 그 대학이 아예 반영하지 않습니다. ' +
          '<strong>기타</strong>는 한국사와 제2외국어를 합한 값이라, 다섯 칸을 더하면 100%가 됩니다. ' +
          '(원자료 표기가 어긋나 합이 맞지 않는 곳은 상세에 알려 드립니다.)</p>';
     h += '<p class="note"><strong>내 기준 대비</strong>는 기준 백분위 <span class="num">' + f1(state.rp.basePct) +
@@ -650,6 +653,7 @@
       btns[j].addEventListener('click', function () {
         var row = $('det-' + this.getAttribute('data-i'));
         row.hidden = !row.hidden;
+        this.setAttribute('aria-expanded', row.hidden ? 'false' : 'true');
       });
     }
     bindKeep($('view'));
@@ -663,8 +667,13 @@
         var k = this.getAttribute('data-k');
         if (state.cart[k]) delete state.cart[k]; else state.cart[k] = true;
         saveCart();
-        this.setAttribute('aria-pressed', state.cart[k] ? 'true' : 'false');
-        this.setAttribute('title', state.cart[k] ? '관심 목록에서 빼기' : '관심 목록에 담기');
+        var on = !!state.cart[k];
+        // 같은 모집단위 단추가 표 안팎에 둘 있다. 둘 다 같은 상태로 맞춘다.
+        var same = root.querySelectorAll('.keep[data-k="' + k.replace(/"/g, '\\"') + '"]');
+        for (var m = 0; m < same.length; m++) {
+          same[m].setAttribute('aria-pressed', on ? 'true' : 'false');
+          same[m].setAttribute('title', on ? '관심 목록에서 빼기' : '관심 목록에 담기');
+        }
         renderCartCount();
         if (state.tab === 'cart' || state.cartOnly) draw();
       });
@@ -874,11 +883,11 @@
     h += row('전형 방법', esc(u.method || '–') + ' · 수능총점 ' + (u.total || '–') +
              (u.totalAll ? ' / 전형총점 ' + u.totalAll : ''));
     h += row('반영 방식 적용 백분위',
-             (r.adjPct == null ? '계산 불가' : f1(r.adjPct) + ' <span style="color:#6B6B6B">(기준 ' +
+             (r.adjPct == null ? '계산 불가' : f1(r.adjPct) + ' <span class="sub">(기준 ' +
               f1(state.rp.basePct) + ' → 유불리 ' + sgn(r.gain) + ')</span>'));
     if (r.fullScore) {
       h += row('내 환산점(추정)', f1(r.myScore) + ' / 만점 ' + f1(r.fullScore) +
-               ' <span style="color:#6B6B6B">(득점률 ' + f1(r.myScore / r.fullScore * 100) + '%)</span>');
+               ' <span class="sub">(득점률 ' + f1(r.myScore / r.fullScore * 100) + '%)</span>');
     }
     h += row('2025 입시결과', '70%컷 백분위 ' + f1(u.cutPct) +
              (u.cut70 != null ? ' · 대학 자체 환산점 ' + (u.cut50 != null ? u.cut50 + '(50%) / ' : '') + u.cut70 + '(70%)' : ''));
@@ -886,10 +895,10 @@
              (u.nf25 == null ? '–' : u.nf25) + '명(이월 ' + (u.carry25 == null ? '–' : u.carry25) + '명)');
     h += row('경쟁률 · 충원율',
              '2025 ' + (c[0] == null ? '–' : f1(c[0])) + ':1' +
-             (c[2] != null ? ' <span style="color:#6B6B6B">(실질 ' + f1(c[2]) + ':1)</span>' : '') +
+             (c[2] != null ? ' <span class="sub">(실질 ' + f1(c[2]) + ':1)</span>' : '') +
              ' / 충원 ' + (c[1] == null ? '–' : f1(c[1] * 100) + '%') +
              ' · 2024 ' + (c[3] == null ? '–' : f1(c[3])) + ':1' +
-             (c[5] != null ? ' <span style="color:#6B6B6B">(실질 ' + f1(c[5]) + ':1)</span>' : '') +
+             (c[5] != null ? ' <span class="sub">(실질 ' + f1(c[5]) + ':1)</span>' : '') +
              ' / 충원 ' + (c[4] == null ? '–' : f1(c[4] * 100) + '%'));
     h += row('입시결과 신뢰도', relText(r));
     if (u.move) h += row('올해 군별 정원', moveText(u));
@@ -952,7 +961,7 @@
            '<p class="gainl">반영 유불리(백분위 눈금 · 평균)</p><ul>';
       for (var m = 0; m < g.best.length; m++) {
         var r = g.best[m];
-        h += '<li>' + esc(tie(r.u.unit)) + ' <span class="num" style="color:#6B6B6B">' +
+        h += '<li>' + esc(tie(r.u.unit)) + ' <span class="num sub">' +
              r.u.term + '군 · 컷 ' + f1(r.cut70p) + ' · ' + (A.LEVEL_NAME[r.level] || '자료 없음') + '</span></li>';
       }
       h += '</ul></div>';
@@ -1114,7 +1123,9 @@
 
   document.addEventListener('touchstart', function () {}, { passive: true });
 
-  $('view').innerHTML = '<div class="tablewrap"><div class="empty">자료를 불러오는 중입니다…</div></div>';
+  $('view').innerHTML = '<div class="tablewrap"><div class="skel" aria-live="polite">' +
+    '<div></div><div></div><div></div><div></div><div></div>' +
+    '<p>대학별 수능 반영 방법을 불러오는 중입니다.</p></div></div>';
   state.cart = loadCart();
   A.load().then(function () {
     state.pristine = !loadProfile();

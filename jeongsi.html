@@ -20,53 +20,55 @@
     background:var(--bg); color:var(--ink);
     min-height:100vh; min-height:100dvh;
     font-family:"Pretendard",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
-    font-size:15px; line-height:1.65; letter-spacing:-0.005em;
+    font-size:16px; line-height:1.65; letter-spacing:-0.005em;
     word-break:keep-all; overflow-wrap:break-word; overflow-wrap:anywhere;
     -webkit-text-size-adjust:100%; -webkit-font-smoothing:antialiased;
   }
   .wrap{max-width:1120px; margin:0 auto; padding:32px 24px 64px;}
 
-  h1{font-size:26px; line-height:1.3; font-weight:700; margin:0 0 8px;}
-  h2{font-size:19px; line-height:1.3; font-weight:700; margin:0 0 12px;}
-  h3{font-size:15px; line-height:1.35; font-weight:600; margin:0 0 8px;}
+  h1{font-size:25px; line-height:1.3; font-weight:700; margin:0 0 8px;}
+  h2{font-size:20px; line-height:1.3; font-weight:700; margin:0 0 12px;}
+  h3{font-size:16px; line-height:1.35; font-weight:700; margin:0 0 8px;}
   p{margin:0 0 12px; max-width:44em;}
-  .lede{color:var(--muted); font-size:14px; margin:0;}
+  .lede{color:var(--muted); font-size:16px; margin:0;}
   .num{font-variant-numeric:tabular-nums;}
+  .sub{color:var(--muted);}
 
   /* ---------- 카드 ---------- */
-  .card{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:20px 20px 24px;}
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:24px 24px 28px;}
   .card + .card{margin-top:24px;}
   section{margin-top:40px;}
   section:first-of-type{margin-top:28px;}
 
   /* ---------- 성적 입력 ---------- */
   .scores{display:grid; grid-template-columns:repeat(auto-fit,minmax(212px,1fr)); grid-gap:16px 20px;}
-  .field label{display:block; font-size:13px; font-weight:600; color:var(--ink2); margin-bottom:6px;}
-  .field .ctl > * + *{margin-top:6px;}
-  .staticline{font-size:13px; color:var(--muted); padding:10px 2px 9px; line-height:1.4;}
+  .field label{display:block; font-size:13px; font-weight:600; color:var(--ink2); margin-bottom:8px;}
+  .field .ctl > * + *{margin-top:8px;}
+  .staticline{font-size:13px; color:var(--muted); padding:12px 4px; line-height:1.4;}
   .field .sub{font-weight:400; color:var(--muted);}
   select,input[type=text],input[type=number]{
     width:100%; font-family:inherit; font-size:16px; line-height:1.4;
-    padding:9px 10px; border:1px solid var(--line-strong); border-radius:6px;
+    padding:10px 12px; border:1px solid var(--line-strong); border-radius:6px;
     background:var(--surface); color:var(--ink); -webkit-appearance:none; appearance:none;
   }
   select:focus,input:focus{outline:2px solid var(--amber-ink); outline-offset:1px;}
-  .duo{display:grid; grid-template-columns:1fr 1fr; grid-gap:6px;}
-  .hint{font-size:12px; color:var(--muted); margin-top:5px; font-variant-numeric:tabular-nums;}
+  .duo{display:grid; grid-template-columns:1fr 1fr; grid-gap:8px;}
+  .hint{font-size:11px; color:var(--muted); margin-top:5px; font-variant-numeric:tabular-nums;}
 
   /* ---------- 요약 ---------- */
-  .summary{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); grid-gap:1px; background:var(--line); border:1px solid var(--line); border-radius:10px; overflow:hidden; margin-top:24px;}
-  .summary div{background:var(--surface); padding:14px 16px 16px;}
-  .summary dt{font-size:12px; color:var(--muted); margin-bottom:2px;}
-  .summary dd{margin:0; font-size:21px; font-weight:700; font-variant-numeric:tabular-nums;}
+  .summary{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); grid-gap:24px 32px;
+           margin-top:24px; padding-top:24px; border-top:1px solid var(--line);}
+  .summary div{background:none; padding:0;}
+  .summary dt{font-size:11px; color:var(--muted); margin-bottom:2px;}
+  .summary dd{margin:0; font-size:20px; font-weight:700; font-variant-numeric:tabular-nums;}
   .summary dd small{font-size:13px; font-weight:400; color:var(--muted);}
 
   /* ---------- 탭 ---------- */
   .tabs{border-bottom:1px solid var(--line); margin-bottom:24px;}
   .tabs button{
-    font-family:inherit; font-size:15px; font-weight:600; color:var(--muted);
+    font-family:inherit; font-size:16px; font-weight:600; color:var(--muted);
     background:none; border:none; border-bottom:2px solid transparent;
-    padding:10px 2px 9px; margin:0 24px 0 0; cursor:pointer;
+    padding:12px 4px; margin:0 24px 0 0; cursor:pointer;
   }
   .tabs button[aria-selected=true]{color:var(--ink); border-bottom-color:var(--amber);}
   .tabs button:focus-visible{outline:2px solid var(--amber-ink); outline-offset:2px;}
@@ -74,24 +76,24 @@
   /* ---------- 필터 ---------- */
   .filters{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); grid-gap:12px; margin-bottom:8px;}
   @media (min-width:860px){ .filters{grid-template-columns:repeat(4,1fr);} }
-  .chips{margin-top:12px;}
-  .chips span.lab{font-size:12px; color:var(--muted); margin-right:8px;}
+  .chips{margin-top:16px;}
+  .chips span.lab{font-size:11px; color:var(--muted); margin-right:8px;}
   .chip{
     display:inline-block; font-family:inherit; font-size:13px; font-weight:600;
-    padding:5px 11px; margin:0 6px 6px 0; border-radius:999px;
+    padding:8px 12px; margin:0 8px 8px 0; border-radius:999px;
     border:1px solid var(--line-strong); background:var(--surface); color:var(--ink2); cursor:pointer;
   }
   .chip[aria-pressed=true]{background:var(--amber-soft); border-color:var(--amber); color:#1A1A1A;}
   .chip:focus-visible{outline:2px solid var(--amber-ink); outline-offset:1px;}
-  .toggles{margin-top:12px; font-size:13px; color:var(--ink2);}
+  .toggles{margin-top:16px; font-size:13px; color:var(--ink2);}
   .toggles label{margin-right:20px; white-space:nowrap;}
   .toggles input{margin-right:5px; width:auto;}
 
   /* ---------- 표 ---------- */
-  .tablewrap{overflow-x:auto; border:1px solid var(--line); border-radius:10px; background:var(--surface); margin-top:20px;}
-  table{border-collapse:collapse; width:100%; min-width:1040px; font-size:13.5px;}
+  .tablewrap{overflow-x:auto; border:1px solid var(--line); border-radius:10px; background:var(--surface); margin-top:24px;}
+  table{border-collapse:collapse; width:100%; min-width:1040px; font-size:13px;}
   /* 표 셀에는 anywhere를 쓰지 않는다. 좁은 열에서 글자가 한 자씩 세로로 깨진다. */
-  th,td{padding:9px 10px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;
+  th,td{padding:8px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;
         overflow-wrap:break-word;}
   th:nth-child(4),td:nth-child(4),th.nw,td.nw{white-space:nowrap;}
   /* 반영비율 네 칸은 서로 붙여 한 덩어리로 읽히게 한다 */
@@ -99,27 +101,25 @@
   th.rt:first-of-type,td.rt:first-of-type{padding-left:12px;}
   .opt{color:var(--amber-ink); font-weight:700;}
   thead th{
-    font-size:12px; font-weight:600; color:var(--muted); white-space:nowrap;
-    background:var(--surface); border-bottom:1px solid var(--line-strong); position:sticky; top:0; z-index:10;
+    font-size:11px; font-weight:600; color:var(--muted); white-space:nowrap;
+    background:var(--surface); border-bottom:1px solid var(--line-strong); position:sticky; top:0; z-index:30;
   }
-  thead th.sortable{cursor:pointer;}
-  thead th.sortable[aria-sort]{color:var(--ink);}
   td.n,th.n{text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap;}
   tbody tr:last-child td{border-bottom:none;}
   tbody tr.det td{background:#FCFBF9; border-top:none; position:static;}
-  thead th:nth-child(1),tbody tr.main td:nth-child(1){position:sticky; left:0; z-index:11; background:var(--surface); width:38px; min-width:38px;}
-  thead th:nth-child(2),tbody tr.main td:nth-child(2){position:sticky; left:38px; z-index:11; background:var(--surface); min-width:86px;}
-  thead th:nth-child(1),thead th:nth-child(2){z-index:21;}
+  thead th:nth-child(1),tbody tr.main td:nth-child(1){position:sticky; left:0; z-index:20; background:var(--surface); width:38px; min-width:38px;}
+  thead th:nth-child(2),tbody tr.main td:nth-child(2){position:sticky; left:38px; z-index:20; background:var(--surface); min-width:86px;}
+  thead th:nth-child(1),thead th:nth-child(2){z-index:30;}
   thead th:last-child,tbody tr.main td:last-child{
-    position:sticky; right:0; z-index:11; background:var(--surface);
+    position:sticky; right:0; z-index:20; background:var(--surface);
     box-shadow:-1px 0 0 var(--line);
   }
-  thead th:last-child{z-index:21;}
+  thead th:last-child{z-index:30;}
   .uni{font-weight:600; white-space:nowrap;}
   .major{color:var(--ink2);}
   td.major{max-width:196px;}
   .rowbtn{
-    font-family:inherit; font-size:13.5px; font-weight:600; color:var(--amber-ink);
+    font-family:inherit; font-size:13px; font-weight:600; color:var(--amber-ink);
     background:none; border:none; padding:0; cursor:pointer; text-align:left;
     /* 띄어쓰기 없는 긴 학과명도 칸 안에서 접히게 한다. 아래 min-width가
        한 글자씩 세로로 깨지는 것을 막는다. */
@@ -128,7 +128,7 @@
   .rowbtn:focus-visible{outline:2px solid var(--amber-ink); outline-offset:2px;}
   /* 좁은 화면에서만 이름 아래에 컷·판정을 덧붙인다 */
   .mini{
-    display:none; margin-top:2px; font-size:11.5px; font-weight:400; color:var(--muted);
+    display:none; margin-top:2px; font-size:11px; font-weight:400; color:var(--muted);
     font-variant-numeric:tabular-nums; line-height:1.45; overflow-wrap:normal;
   }
 
@@ -140,7 +140,7 @@
   .lv-name{font-weight:600;}
   .lv0 .lv-name{color:var(--err);}
 
-  .tag{display:inline-block; font-size:11.5px; font-weight:600; padding:2px 7px; border-radius:4px;
+  .tag{display:inline-block; font-size:11px; font-weight:600; padding:2px 8px; border-radius:4px;
        background:var(--amber-soft); color:#1A1A1A; margin:0 4px 3px 0; white-space:nowrap;}
   .tag.plain{background:#F2F0EC; color:var(--ink2);}
   .warn{color:var(--err); font-weight:600;}
@@ -148,31 +148,41 @@
   .det dl{display:grid; grid-template-columns:max-content 1fr; grid-gap:4px 16px; margin:0 0 12px; font-size:13px;}
   .det dt{color:var(--muted);}
   .det dd{margin:0;}
-  .det .memo{font-size:12.5px; color:var(--ink2); margin:0 0 6px; max-width:60em;}
+  .det .memo{font-size:13px; color:var(--ink2); margin:0 0 6px; max-width:42em;}
 
   .more{margin-top:16px; text-align:center;}
   .btn{
-    font-family:inherit; font-size:14px; font-weight:600; color:#1A1A1A;
+    font-family:inherit; font-size:16px; font-weight:600; color:#1A1A1A;
     background:var(--amber-soft); border:1px solid var(--amber); border-radius:6px;
-    padding:9px 20px; cursor:pointer;
+    padding:12px 20px; cursor:pointer;
   }
-  .btn:active{transform:scale(0.98);}
+  .btn:active,.chip:active,.keep:active,.rowbtn:active,.tabs button:active{transform:scale(0.98);}
+  .btn,.chip,.keep,.rowbtn,.tabs button{transition:transform 180ms ease, background-color 180ms ease;}
   .btn:focus-visible{outline:2px solid var(--amber-ink); outline-offset:2px;}
-  .empty{padding:36px 20px; text-align:center; color:var(--muted); font-size:14px;}
+  .empty{padding:48px 24px; text-align:center; color:var(--muted); font-size:16px;}
+  /* 로딩은 스피너 대신 자리표시자 — 무엇이 올지 미리 보여 준다 */
+  .skel{padding:8px 12px;}
+  .skel div{height:13px; margin:16px 0; background:var(--line); border-radius:3px;}
+  .skel div:nth-child(1){width:38%;}
+  .skel div:nth-child(2){width:72%;}
+  .skel div:nth-child(3){width:56%;}
+  .skel div:nth-child(4){width:66%;}
+  .skel div:nth-child(5){width:44%;}
+  .skel p{margin:16px 0 0; font-size:13px; color:var(--muted);}
   .btn.ghost{background:none; border-color:var(--line-strong); font-weight:600;}
   .firsttime{
     font-size:13px; color:var(--amber-ink); background:var(--amber-soft);
-    border-radius:6px; padding:10px 12px; margin:0 0 18px; max-width:none;
+    border-radius:6px; padding:12px 16px; margin:0 0 24px; max-width:none;
   }
-  .note{font-size:12.5px; color:var(--muted); margin-top:12px;}
+  .note{font-size:13px; color:var(--muted); margin-top:12px;}
 
   /* 유리한 대학 카드 */
   .rank{display:grid; grid-template-columns:repeat(auto-fill,minmax(258px,1fr)); grid-gap:16px; margin-top:20px;}
-  .rankcard{border:1px solid var(--line); border-radius:10px; padding:16px 16px 18px; background:var(--surface);}
+  .rankcard{border:1px solid var(--line); border-radius:10px; padding:16px 16px 20px; background:var(--surface);}
   .rankcard h3{margin:0 0 2px; font-size:16px;}
-  .rankcard .gainv{font-size:24px; font-weight:700; font-variant-numeric:tabular-nums; margin:8px 0 2px;}
-  .rankcard .gainl{font-size:12px; color:var(--muted); margin:0 0 12px;}
-  .rankcard ul{margin:0; padding:0; list-style:none; font-size:12.5px; color:var(--ink2);}
+  .rankcard .gainv{font-size:25px; font-weight:700; font-variant-numeric:tabular-nums; margin:8px 0 2px;}
+  .rankcard .gainl{font-size:11px; color:var(--muted); margin:0 0 12px;}
+  .rankcard ul{margin:0; padding:0; list-style:none; font-size:13px; color:var(--ink2);}
   .rankcard li{padding:3px 0; border-top:1px solid var(--line);}
   .rankcard li:first-child{border-top:none;}
 
@@ -186,17 +196,18 @@
   .keep[aria-pressed=true]{background:var(--amber-soft); border-color:var(--amber);}
   .keep[aria-pressed=true] svg path{fill:var(--amber); stroke:var(--amber-ink);}
   .keep:focus-visible{outline:2px solid var(--amber-ink); outline-offset:1px;}
+  .keep-inline{display:none; vertical-align:top; margin-left:8px;}
   #cart-n{font-variant-numeric:tabular-nums;}
 
   .cartgroup{margin-top:32px;}
   .cartgroup:first-of-type{margin-top:8px;}
-  .cartgroup h3{font-size:17px; margin:0 0 4px;}
-  .cartgroup .sub{font-size:12.5px; color:var(--muted); margin:0 0 12px;}
-  .cartempty{border:1px dashed var(--line-strong); border-radius:8px; padding:20px; color:var(--muted); font-size:13px;}
+  .cartgroup h3{font-size:20px; margin:0 0 4px;}
+  .cartgroup .sub{font-size:13px; color:var(--muted); margin:0 0 12px;}
+  .cartempty{border:1px dashed var(--line-strong); border-radius:8px; padding:24px; color:var(--muted); font-size:13px;}
 
   /* 반영 방법 안내 */
-  .why{border-left:2px solid var(--amber); padding:2px 0 2px 14px; margin:0 0 14px;}
-  .why p{margin:0 0 6px; font-size:13.5px; line-height:1.7; max-width:56em;}
+  .why{margin:0 0 16px; padding:12px 16px; background:#FCFBF9; border:1px solid var(--line); border-radius:8px;}
+  .why p{margin:0 0 6px; font-size:13px; line-height:1.7; max-width:42em;}
   .why p:last-child{margin-bottom:0;}
   .why b{font-weight:600;}
 
@@ -206,27 +217,28 @@
   .relg i.on{background:var(--amber);}
 
   /* 내 위치 지도 */
-  .compass{margin-top:24px; padding-top:22px; border-top:1px solid var(--line);}
+  .compass{margin-top:32px; padding-top:8px;}
   .compass h3{margin:0 0 2px;}
-  .compass .hero{font-size:22px; font-weight:700; font-variant-numeric:tabular-nums; margin:10px 0 2px;}
-  .compass .heroSub{font-size:12.5px; color:var(--muted); margin:0 0 14px; max-width:46em;}
+  .compass .hero{font-size:25px; font-weight:700; font-variant-numeric:tabular-nums; margin:12px 0 4px;}
+  .heroUnit{font-size:13px; font-weight:400; color:var(--muted);}
+  .compass .heroSub{font-size:13px; color:var(--muted); margin:0 0 14px; max-width:42em;}
   .compass .plot{position:relative; padding-top:20px;}
   .compass svg{display:block; width:100%; height:104px; border-bottom:1px solid var(--line);}
   .compass .mine{
-    position:absolute; top:0; font-size:11.5px; font-weight:700; color:var(--amber-ink);
+    position:absolute; top:0; font-size:11px; font-weight:700; color:var(--amber-ink);
     white-space:nowrap; padding:0 5px;
   }
   .compass .ticks{position:relative; height:16px; margin-top:4px;}
   .compass .ticks span{
-    position:absolute; transform:translateX(-50%); font-size:10.5px; color:var(--muted);
+    position:absolute; transform:translateX(-50%); font-size:11px; color:var(--muted);
     font-variant-numeric:tabular-nums; white-space:nowrap;
   }
   .compass .ticks span:first-child{transform:none;}
   .compass .ticks span:last-child{transform:translateX(-100%);}
-  .compass figcaption{font-size:12px; color:var(--muted); margin-top:6px;}
+  .compass figcaption{font-size:11px; color:var(--muted); margin-top:6px;}
 
-  footer{margin-top:56px; padding-top:20px; border-top:1px solid var(--line); font-size:12.5px; color:var(--muted);}
-  footer p{max-width:52em;}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line); font-size:13px; color:var(--muted);}
+  footer p{max-width:42em;}
   a{color:var(--amber-ink);}
 
   @media (hover:hover){
@@ -245,14 +257,16 @@
   }
   @media (max-width:480px){
     /* 폰에서는 고정 칸이 화면의 절반을 먹어 학과 이름을 가린다.
-       담기 단추 고정을 풀고, 판단에 필요한 값은 이름 아래 줄로 대신한다. */
+       맨 끝 관심 칸을 접고, 담기 단추를 학과 이름 옆에 둔다. */
     thead th:last-child,tbody tr.main td:last-child{position:static; box-shadow:none;}
+    thead th:last-child,tbody tr.main td:last-child{display:none;}
+    .keep-inline{display:inline-block;}
   }
   @media (max-width:640px){
     .wrap{padding:24px 16px 48px;}
-    h1{font-size:22px;}
-    .summary dd{font-size:19px;}
-    .tabs button{font-size:14px; margin-right:16px;}
+    h1{font-size:25px;}
+    .summary dd{font-size:20px;}
+    .tabs button{font-size:16px; margin-right:16px;}
   }
   @media print{
     .noprint{display:none !important;}
@@ -262,8 +276,10 @@
     thead th:nth-child(1),thead th:nth-child(2),
     tbody tr.main td:nth-child(1),tbody tr.main td:nth-child(2){position:static; box-shadow:none;}
     body{background:#fff; color:#000;}
+    .lede,.note,.hint,.sub,figcaption,.det dt,.summary dt,td,th,.tag{color:#000 !important;}
+    .why{background:none; border-color:#999;}
     .tablewrap{overflow:visible; border:none;}
-    table{min-width:0; font-size:10.5px;}
+    table{min-width:0; font-size:11px;}
     thead th{position:static; color:#000;}
     tbody tr{page-break-inside:avoid; break-inside:avoid;}
   }
@@ -274,8 +290,8 @@
 
   <header>
     <h1><span style="display:inline-block">정시 나침반</span> <span style="display:inline-block">— 목표 등급으로 지원 가능선&nbsp;살펴보기</span></h1>
-    <p class="lede">목표 수능 등급을 넣으면, 전국 대학이 저마다 다르게 정해 둔
-      수능 반영 방법으로 성적을 다시 계산해 봅니다.</p>
+    <p class="lede">목표 수능 등급을 넣으면, 대학마다 다르게 정해 둔 수능 반영 방법으로
+      성적을 다시 계산해&nbsp;봅니다.</p>
   </header>
 
   <section id="input-sec">
@@ -368,8 +384,8 @@
   </footer>
 </div>
 
-<script src="jeongsi-engine.js?v=7"></script>
-<script src="jeongsi-app.js?v=7"></script>
-<script src="jeongsi-ui.js?v=7"></script>
+<script src="jeongsi-engine.js?v=9"></script>
+<script src="jeongsi-app.js?v=9"></script>
+<script src="jeongsi-ui.js?v=9"></script>
 </body>
 </html>
