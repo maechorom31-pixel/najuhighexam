@@ -59,7 +59,11 @@
     });
   }
   function f1(v) { return v == null ? '–' : (Math.round(v * 10) / 10).toFixed(1); }
-  function sgn(v) { return v == null ? '–' : (v >= 0 ? '+' : '') + f1(v); }
+  function sgn(v) {
+    if (v == null) return '–';
+    if (Math.abs(v) < 0.05) return '0.0';      // +0.0 / -0.0 은 어색하다
+    return (v > 0 ? '+' : '') + f1(v);
+  }
   /* 마지막 어절이 짧으면 앞 어절에 붙여 고아줄을 막는다 */
   function tie(s) { return String(s || '').replace(/ (?=[^ ]{1,4}$)/, ' '); }
 
@@ -210,7 +214,7 @@
     var withCut = 0, reach = 0;
     for (i = 0; i < state.results.length; i++) {
       var r = state.results[i];
-      if (r.cut70p == null || r.u.track === '예체능') continue;
+      if (r.cut70p == null || r.u.track === '예체능' || !r.req.ok) continue;
       withCut++;
       bins[Math.min(bins.length - 1, Math.floor(r.cut70p / BIN))]++;
       if (r.level >= 2) reach++;
@@ -242,7 +246,8 @@
     $('compass').innerHTML =
       '<figure class="compass" style="margin:0">' +
       '<h3>전국 정시 지형에서 내 위치</h3>' +
-      '<p class="lede" style="font-size:12.5px">2025학년도 70%컷 백분위로 본 모집단위 분포입니다(예체능 제외).</p>' +
+      '<p class="lede" style="font-size:12.5px">2025학년도 70%컷 백분위로 본 모집단위 분포입니다. ' +
+        '지정과목을 채우는 곳만 세었고 예체능은 뺐습니다.</p>' +
       '<p class="hero">' + reach.toLocaleString() + '곳 <span style="font-size:13px;font-weight:400;color:#6B6B6B">' +
         '· 입시결과가 있는 ' + withCut.toLocaleString() + '곳의 ' + Math.round(reach / withCut * 100) + '%</span></p>' +
       '<p class="heroSub">기준 백분위 <span class="num">' + f1(rp.basePct) + '</span>' + josaRo(f1(rp.basePct)) +
@@ -396,8 +401,9 @@
     var c = r.u.compete || [];
     if (c[0] == null) return '–';
     if (c[2] == null) return '<span class="num">' + f1(c[0]) + '</span>';
+    // 두 줄로 나눠야 열이 좁아져 표가 화면 안에 들어온다
     return '<span class="num">' + f1(c[0]) +
-           '<span style="color:#6B6B6B"> (' + f1(c[2]) + ')</span></span>';
+           '<br><span style="color:#6B6B6B">(' + f1(c[2]) + ')</span></span>';
   }
 
   function gainCell(r) {
@@ -482,12 +488,22 @@
     return '<span class="num" title="' + esc(what.join(' · ')) + '">' + f1(v) + '</span>';
   }
 
+  /* 좁은 화면에서는 오른쪽 열이 화면 밖으로 밀린다.
+     이름 아래에 컷·판정·유불리를 한 줄로 붙여 스크롤 없이도 가늠하게 한다. */
+  function miniLine(r) {
+    var bits = ['컷 ' + f1(r.cut70p), sgn(r.diff)];
+    if (r.level >= 0) bits.push(A.LEVEL_NAME[r.level]);
+    if (r.gain >= 1.5) bits.push('유리 ' + sgn(r.gain));
+    else if (r.gain <= -1.5) bits.push('불리 ' + sgn(r.gain));
+    return '<span class="mini">' + esc(bits.join(' · ')) + '</span>';
+  }
+
   function ratioCells(r) {
     return '<td class="n rt">' + ratioCell(r, '국') + '</td>' +
            '<td class="n rt">' + ratioCell(r, '수') + '</td>' +
            '<td class="n rt">' + ratioCell(r, '영') + '</td>' +
            '<td class="n rt">' + ratioCell(r, '탐') + '</td>' +
-           '<td class="n rt">' + etcCell(r) + '</td>';
+           '<td class="n rt fold">' + etcCell(r) + '</td>';
   }
 
   function drawTable(rows) {
@@ -497,11 +513,11 @@
     }
     var shown = rows.slice(0, state.limit);
     var h = '<div class="tablewrap"><table><thead><tr>' +
-      '<th>군</th><th>대학</th><th>모집단위</th><th>계열</th>' +
+      '<th>군</th><th>대학</th><th>모집단위</th><th class="nw fold">계열</th>' +
       '<th class="n">모집<br>·신뢰도</th><th class="n">2025<br>70%컷</th><th class="n">내 기준<br>대비</th>' +
       '<th>가능성</th><th class="n">반영<br>유불리</th>' +
       '<th class="n rt">국어</th><th class="n rt">수학</th><th class="n rt">영어</th><th class="n rt">탐구</th>' +
-      '<th class="n rt">기타</th><th class="n">경쟁률<br>(실질)</th><th>관심</th>' +
+      '<th class="n rt fold">기타</th><th class="n fold">경쟁률<br>(실질)</th><th>관심</th>' +
       '</tr></thead><tbody>';
     for (var i = 0; i < shown.length; i++) {
       var r = shown[i], u = r.u;
@@ -511,14 +527,15 @@
           esc(tie(u.unit)) +
           (u.dupAdmit ? ' <span class="tag plain">' + esc(u.admit) + '</span>' : '') +
           (u.major ? ' <span class="tag plain">세부</span>' : '') +
-          (!r.req.ok ? ' <span class="warn">지정과목 확인</span>' : '') + '</button></td>' +
-        '<td>' + esc(u.track) + '</td>' +
+          (!r.req.ok ? ' <span class="warn">지정과목 확인</span>' : '') +
+          miniLine(r) + '</button></td>' +
+        '<td class="nw fold">' + esc(u.track) + '</td>' +
         '<td class="n">' + seatCell(r) + '</td>' +
         '<td class="n">' + f1(r.cut70p) + '</td>' +
         '<td class="n">' + sgn(r.diff) + '</td>' +
         '<td>' + levelCell(r) + '</td>' +
         '<td class="n">' + gainCell(r) + '</td>' + ratioCells(r) +
-        '<td class="n">' + rateCell(r) + '</td>' +
+        '<td class="n fold">' + rateCell(r) + '</td>' +
         '<td class="noprint">' + keepCell(r) + '</td></tr>';
       h += '<tr class="det" id="det-' + i + '" hidden><td colspan="16">' + detail(r) + '</td></tr>';
     }
@@ -883,24 +900,24 @@
       h += '<div class="cartgroup"><h3>' + t + '군</h3><p class="sub">' + rows.length + '곳 · ' +
            rows.filter(function (r) { return r.level >= 3; }).length + '곳이 적정 이상</p>';
       h += '<div class="tablewrap"><table><thead><tr>' +
-        '<th>대학</th><th>모집단위</th><th class="nw">계열</th><th class="n">모집<br>·신뢰도</th>' +
+        '<th>대학</th><th>모집단위</th><th class="nw fold">계열</th><th class="n">모집<br>·신뢰도</th>' +
         '<th class="n">2025<br>70%컷</th><th class="n">내 기준<br>대비</th><th>가능성</th>' +
         '<th class="n">반영<br>유불리</th>' +
         '<th class="n rt">국어</th><th class="n rt">수학</th><th class="n rt">영어</th><th class="n rt">탐구</th>' +
-        '<th class="n rt">기타</th><th class="n">경쟁률<br>(실질)</th><th class="n">2025<br>충원율</th>' +
+        '<th class="n rt fold">기타</th><th class="n fold">경쟁률<br>(실질)</th><th class="n">2025<br>충원율</th>' +
         '<th class="noprint">관심</th></tr></thead><tbody>';
       rows.forEach(function (r) {
         var u = r.u, c = u.compete || [];
         h += '<tr class="main"><td class="uni">' + esc(u.univ) + '</td>' +
           '<td class="major">' + esc(tie(u.unit)) +
             (u.dupAdmit ? ' <span class="tag plain">' + esc(u.admit) + '</span>' : '') + '</td>' +
-          '<td class="nw">' + esc(u.track) + '</td>' +
+          '<td class="nw fold">' + esc(u.track) + '</td>' +
           '<td class="n">' + seatCell(r) + '</td>' +
           '<td class="n">' + f1(r.cut70p) + '</td>' +
           '<td class="n">' + sgn(r.diff) + '</td>' +
           '<td>' + levelCell(r) + '</td>' +
           '<td class="n">' + gainCell(r) + '</td>' + ratioCells(r) +
-          '<td class="n">' + rateCell(r) + '</td>' +
+          '<td class="n fold">' + rateCell(r) + '</td>' +
           '<td class="n">' + (c[1] == null ? '–' : f1(c[1] * 100) + '%') + '</td>' +
           '<td class="noprint">' + keepCell(r) + '</td></tr>';
       });
