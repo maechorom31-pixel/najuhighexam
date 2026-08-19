@@ -3,6 +3,7 @@
   'use strict';
 
   var A = window.JeongsiApp;
+  var E = window.JeongsiEngine;
   var $ = function (id) { return document.getElementById(id); };
 
   var state = {
@@ -44,6 +45,9 @@
     ['diff', '내 성적과 가까운 순'],
     ['gain', '반영 유불리 유리한 순'],
     ['mathlow', '수학 비중 낮은 순'],
+    ['korhigh', '국어 비중 높은 순'],
+    ['enghigh', '영어 비중 높은 순'],
+    ['tamhigh', '탐구 비중 높은 순'],
     ['n', '모집인원 많은 순'],
     ['rate', '경쟁률 낮은 순']
   ];
@@ -303,6 +307,9 @@
       gain: function (r) { return r.gain == null ? -999 : r.gain; },
       cut: function (r) { return r.cut70p == null ? -1 : r.cut70p; },
       mathlow: function (r) { return -(r.math.role === '미반영' ? -1 : r.math.max); },
+      korhigh: function (r) { return r.wUsed['국'] || 0; },
+      enghigh: function (r) { return r.wUsed['영'] || 0; },
+      tamhigh: function (r) { return r.wUsed['탐'] || 0; },
       n: function (r) { return r.u.n26 || 0; },
       rate: function (r) { return -(r.u.compete && r.u.compete[0] != null ? r.u.compete[0] : 999); }
     }[s] || function (r) { return r.diff == null ? -999 : r.diff; };
@@ -343,10 +350,42 @@
            '">' + BOOKMARK + '</button>';
   }
 
-  function mathCell(r) {
-    if (r.math.role === '미반영') return '<span class="tag">미반영</span>';
-    if (r.math.role === '선택') return '<span class="tag">선택 ' + f1(r.math.max) + '%</span>';
-    return '<span class="num">' + f1(r.math.max) + '%</span>';
+  /* 반영비율 한 칸. 이 성적에 실제로 적용된 값을 보이고,
+     골라서 반영하는 영역은 별표로 구분한다. */
+  function ratioCell(r, area) {
+    var role = r.roles ? r.roles[area] : null, used = r.wUsed[area];
+    if (!role || role.role === '미반영') {
+      return '<span style="color:#6B6B6B">–</span>';
+    }
+    if (role.role === '선택') {
+      if (used) {
+        return '<span class="num">' + f1(used) + '<span class="opt">*</span></span>';
+      }
+      // 배점 0은 뽑히지 않았다는 뜻이다.
+      return '<span class="num" style="color:#6B6B6B" title="골라서 반영하는 영역 · 최대 ' +
+             f1(role.max) + '%. 이 성적에서는 빠졌습니다.">–<span class="opt">*</span></span>';
+    }
+    var v = used != null ? used : role.max;
+    if (!v) return '<span style="color:#6B6B6B">–</span>';
+    return '<span class="num">' + f1(v) + '</span>';
+  }
+
+  /** 한국사·제2외국어는 자리를 많이 차지하지 않게 한 칸으로 묶는다. */
+  function etcCell(r) {
+    var v = (r.wUsed['한'] || 0) + (r.wUsed['외'] || 0);
+    if (!v) return '<span style="color:#6B6B6B">–</span>';
+    var what = [];
+    if (r.wUsed['한']) what.push('한국사 ' + f1(r.wUsed['한']) + '%');
+    if (r.wUsed['외']) what.push('제2외국어 ' + f1(r.wUsed['외']) + '%');
+    return '<span class="num" title="' + esc(what.join(' · ')) + '">' + f1(v) + '</span>';
+  }
+
+  function ratioCells(r) {
+    return '<td class="n rt">' + ratioCell(r, '국') + '</td>' +
+           '<td class="n rt">' + ratioCell(r, '수') + '</td>' +
+           '<td class="n rt">' + ratioCell(r, '영') + '</td>' +
+           '<td class="n rt">' + ratioCell(r, '탐') + '</td>' +
+           '<td class="n rt">' + etcCell(r) + '</td>';
   }
 
   function drawTable(rows) {
@@ -358,8 +397,9 @@
     var h = '<div class="tablewrap"><table><thead><tr>' +
       '<th>군</th><th>대학</th><th>모집단위</th><th>계열</th>' +
       '<th class="n">모집</th><th class="n">2025<br>70%컷</th><th class="n">내 기준<br>대비</th>' +
-      '<th>가능성</th><th class="n">반영<br>유불리</th><th class="n">수학<br>비중</th><th class="n">2025<br>경쟁률</th>' +
-      '<th>관심</th>' +
+      '<th>가능성</th><th class="n">반영<br>유불리</th>' +
+      '<th class="n rt">국어</th><th class="n rt">수학</th><th class="n rt">영어</th><th class="n rt">탐구</th>' +
+      '<th class="n rt">기타</th><th class="n">2025<br>경쟁률</th><th>관심</th>' +
       '</tr></thead><tbody>';
     for (var i = 0; i < shown.length; i++) {
       var r = shown[i], u = r.u;
@@ -375,17 +415,22 @@
         '<td class="n">' + f1(r.cut70p) + '</td>' +
         '<td class="n">' + sgn(r.diff) + '</td>' +
         '<td>' + levelCell(r) + '</td>' +
-        '<td class="n">' + gainCell(r) + '</td>' +
-        '<td class="n">' + mathCell(r) + '</td>' +
+        '<td class="n">' + gainCell(r) + '</td>' + ratioCells(r) +
         '<td class="n">' + (u.compete && u.compete[0] != null ? f1(u.compete[0]) : '–') + '</td>' +
         '<td class="noprint">' + keepCell(r) + '</td></tr>';
-      h += '<tr class="det" id="det-' + i + '" hidden><td colspan="12">' + detail(r) + '</td></tr>';
+      h += '<tr class="det" id="det-' + i + '" hidden><td colspan="16">' + detail(r) + '</td></tr>';
     }
     h += '</tbody></table></div>';
     if (rows.length > state.limit) {
       h += '<div class="more noprint"><button type="button" class="btn" id="more">' +
            '더 보기 (' + shown.length.toLocaleString() + ' / ' + rows.length.toLocaleString() + ')</button></div>';
     }
+    h += '<p class="note"><strong>국어·수학·영어·탐구</strong> 칸은 이 성적에 실제로 적용된 반영비율(%)입니다. ' +
+         '<span class="opt">*</span>는 대학이 골라서 반영하는 영역이라는 뜻으로, ' +
+         '<span class="opt">*</span>가 붙은 <span style="color:#6B6B6B">–</span>는 더 잘한 영역이 대신 들어가 빠졌다는 표시입니다. ' +
+         '<span style="color:#6B6B6B">–</span>만 있으면 그 대학이 아예 반영하지 않습니다. ' +
+         '<strong>기타</strong>는 한국사와 제2외국어를 합한 값이라, 다섯 칸을 더하면 100%가 됩니다. ' +
+         '(원자료 표기가 어긋나 합이 맞지 않는 곳은 상세에 알려 드립니다.)</p>';
     h += '<p class="note"><strong>내 기준 대비</strong>는 기준 백분위 <span class="num">' + f1(state.rp.basePct) +
          '</span>에서 그 모집단위의 2025년 70%컷을 뺀 값입니다. ' +
          '<strong>반영 유불리</strong>는 그 대학의 반영 영역·비율·활용지표를 그대로 적용했을 때 ' +
@@ -452,7 +497,7 @@
 
   /** 반영영역 표기를 사람 말로 푼다. '택2(국수영)+탐1한' → '국어·수학·영어 중 잘한 2개 + 탐구 1과목 + 한국사' */
   function areasInWords(u) {
-    var terms = window.JeongsiEngine.parsePattern(u.areas, u.tCnt);
+    var terms = E.parsePattern(u.areas, u.tCnt);
     if (!terms) return '';
     var out = [];
     for (var i = 0; i < terms.length; i++) {
@@ -586,6 +631,30 @@
          (u.memo && u.memo !== u.areas ? ' — ' + esc(u.memo) : '') + '</p>';
     h += '<dl>';
     h += row('내 성적에 적용된 비율', parts.length ? parts.join(' · ') : '자료 없음');
+    if (r.roles) {
+      var fixed = [], picks = {}, pickOrder = [];
+      ['국', '수', '영', '탐'].forEach(function (a) {
+        var ro = r.roles[a];
+        if (!ro || ro.role === '미반영') return;
+        if (ro.role === '필수') { fixed.push(AREA_NAME[a] + ' ' + f1(ro.max) + '%'); return; }
+        var wl = (u._W || E.parseWeights(u.w))[a] || [], k = wl.join('/');
+        if (!picks[k]) { picks[k] = []; pickOrder.push(k); }
+        picks[k].push(AREA_NAME[a]);
+      });
+      var kw = E.parseWeights(u.w);
+      if (kw['한']) fixed.push('한국사 ' + f1(kw['한'][0]) + '%');
+      if (kw['외']) fixed.push('제2외국어 ' + f1(kw['외'][0]) + '%');
+      var out = fixed.slice();
+      pickOrder.forEach(function (k) {
+        var wl = k.split('/').map(parseFloat);
+        var scale = wl.length > 1
+          ? wl.map(function (v, i) { return (i + 1) + '순위 ' + f1(v) + '%'; }).join(' · ')
+          : f1(wl[0]) + '%';
+        out.push(picks[k].join('·') + ' 중 골라서 ' + scale);
+      });
+      // 고를 여지가 없으면 위 '적용된 비율'과 같은 말이라 넣지 않는다.
+      if (pickOrder.length) h += row('대학이 정한 비율', esc(out.join(' / ')));
+    }
     h += row('활용지표', '국·수 ' + esc(u.idxKM || '–') + ' / 탐구 ' + esc(u.idxT || '–') +
              ' · 탐구 ' + (u.tCnt || 1) + '과목');
     h += row('지정과목', (u.reqMath ? '수학 ' + esc(u.reqMath) : '수학 제한 없음') + ' · ' +
@@ -706,22 +775,23 @@
       h += '<div class="cartgroup"><h3>' + t + '군</h3><p class="sub">' + rows.length + '곳 · ' +
            rows.filter(function (r) { return r.level >= 3; }).length + '곳이 적정 이상</p>';
       h += '<div class="tablewrap"><table><thead><tr>' +
-        '<th>대학</th><th>모집단위</th><th>계열</th><th class="n">모집</th>' +
+        '<th>대학</th><th>모집단위</th><th class="nw">계열</th><th class="n">모집</th>' +
         '<th class="n">2025<br>70%컷</th><th class="n">내 기준<br>대비</th><th>가능성</th>' +
-        '<th class="n">반영<br>유불리</th><th class="n">수학<br>비중</th><th class="n">2025<br>경쟁률</th>' +
-        '<th class="n">2025<br>충원율</th><th class="noprint">관심</th></tr></thead><tbody>';
+        '<th class="n">반영<br>유불리</th>' +
+        '<th class="n rt">국어</th><th class="n rt">수학</th><th class="n rt">영어</th><th class="n rt">탐구</th>' +
+        '<th class="n rt">기타</th><th class="n">2025<br>경쟁률</th><th class="n">2025<br>충원율</th>' +
+        '<th class="noprint">관심</th></tr></thead><tbody>';
       rows.forEach(function (r) {
         var u = r.u, c = u.compete || [];
         h += '<tr class="main"><td class="uni">' + esc(u.univ) + '</td>' +
           '<td class="major">' + esc(tie(u.unit)) +
             (u.dupAdmit ? ' <span class="tag plain">' + esc(u.admit) + '</span>' : '') + '</td>' +
-          '<td>' + esc(u.track) + '</td>' +
+          '<td class="nw">' + esc(u.track) + '</td>' +
           '<td class="n">' + (u.n26 == null ? '–' : u.n26) + '</td>' +
           '<td class="n">' + f1(r.cut70p) + '</td>' +
           '<td class="n">' + sgn(r.diff) + '</td>' +
           '<td>' + levelCell(r) + '</td>' +
-          '<td class="n">' + gainCell(r) + '</td>' +
-          '<td class="n">' + mathCell(r) + '</td>' +
+          '<td class="n">' + gainCell(r) + '</td>' + ratioCells(r) +
           '<td class="n">' + (c[0] == null ? '–' : f1(c[0])) + '</td>' +
           '<td class="n">' + (c[1] == null ? '–' : f1(c[1] * 100) + '%') + '</td>' +
           '<td class="noprint">' + keepCell(r) + '</td></tr>';

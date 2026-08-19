@@ -88,11 +88,15 @@
 
   /* ---------- 표 ---------- */
   .tablewrap{overflow-x:auto; border:1px solid var(--line); border-radius:10px; background:var(--surface); margin-top:20px;}
-  table{border-collapse:collapse; width:100%; min-width:860px; font-size:13.5px;}
+  table{border-collapse:collapse; width:100%; min-width:1040px; font-size:13.5px;}
   /* 표 셀에는 anywhere를 쓰지 않는다. 좁은 열에서 글자가 한 자씩 세로로 깨진다. */
   th,td{padding:9px 10px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;
         overflow-wrap:break-word;}
-  th:nth-child(4),td:nth-child(4){white-space:nowrap;}
+  th:nth-child(4),td:nth-child(4),th.nw,td.nw{white-space:nowrap;}
+  /* 반영비율 네 칸은 서로 붙여 한 덩어리로 읽히게 한다 */
+  th.rt,td.rt{padding-left:6px; padding-right:6px; white-space:nowrap;}
+  th.rt:first-of-type,td.rt:first-of-type{padding-left:12px;}
+  .opt{color:var(--amber-ink); font-weight:700;}
   thead th{
     font-size:12px; font-weight:600; color:var(--muted); white-space:nowrap;
     background:var(--surface); border-bottom:1px solid var(--line-strong); position:sticky; top:0; z-index:10;
@@ -293,8 +297,8 @@
   </footer>
 </div>
 
-<script src="jeongsi-engine.js?v=2"></script>
-<script src="jeongsi-app.js?v=2"></script>
-<script src="jeongsi-ui.js?v=2"></script>
+<script src="jeongsi-engine.js?v=3"></script>
+<script src="jeongsi-app.js?v=3"></script>
+<script src="jeongsi-ui.js?v=3"></script>
 </body>
 </html>

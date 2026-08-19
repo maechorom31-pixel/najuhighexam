@@ -242,23 +242,38 @@
     return { ok: ok, cond: cond, msgs: msgs };
   }
 
-  /* ------------------------------------------------------- 수학 반영 성격 */
+  /* ------------------------------------------------- 영역별 반영 성격 */
 
-  function mathRole(u) {
+  /** 그 영역을 반드시 반영하는지(필수), 골라서 반영하는지(선택), 안 보는지(미반영). */
+  function areaRole(u, area) {
     var terms = u._terms !== undefined ? u._terms : (u._terms = E.parsePattern(u.areas, u.tCnt));
     var W = u._W || (u._W = E.parseWeights(u.w));
-    if (!W['수']) return { role: '미반영', max: 0 };
-    if (!terms) return { role: '필수', max: W['수'][0] };
+    if (!W[area]) return { role: '미반영', max: 0 };
+    if (!terms) return { role: '필수', max: W[area][0] };
     var inFix = false, inPick = false;
     for (var i = 0; i < terms.length; i++) {
-      var t = terms[i];
+      var t = terms[i], j, has = false;
       if (t.kind === 'rest') { inPick = true; continue; }
-      if (t.areas.indexOf('수') < 0) continue;
+      for (j = 0; j < t.areas.length; j++) {
+        if (E.baseArea(t.areas[j]) === area) { has = true; break; }
+      }
+      if (!has) continue;
       if (t.kind === 'fix') inFix = true; else inPick = true;
     }
-    if (inFix) return { role: '필수', max: W['수'][0] };
-    if (inPick) return { role: '선택', max: W['수'][0] };
+    if (inFix) return { role: '필수', max: W[area][0] };
+    if (inPick) return { role: '선택', max: W[area][0] };
     return { role: '미반영', max: 0 };
+  }
+
+  function mathRole(u) { return areaRole(u, '수'); }
+
+  /** 국·수·영·탐 네 영역의 반영 성격을 한 번에. 규칙이 같으면 결과도 같아 캐시한다. */
+  function areaRoles(u) {
+    if (u._roles) return u._roles;
+    return (u._roles = {
+      '국': areaRole(u, '국'), '수': areaRole(u, '수'),
+      '영': areaRole(u, '영'), '탐': areaRole(u, '탐')
+    });
   }
 
   /* --------------------------------------------------------------- 평가 */
@@ -271,6 +286,7 @@
       if (calc === undefined) {
         calc = cache[u._rk] = convert(u, rp);
       }
+      var roles = areaRoles(u);
       var cut = u.cutPct;                       // 대학이 공개한 2025 70%컷(국수탐 백분위 평균)
       var diff = cut != null ? rp.basePct - cut : null;
 
@@ -285,7 +301,8 @@
         diff: diff,             // 판정 기준: 기준 백분위 - 70%컷
         level: judge(diff),
         gain: calc.pct == null ? null : calc.pct - rp.basePct,   // 반영 유불리
-        math: mathRole(u),
+        math: roles['수'],
+        roles: roles,
         mathUsed: calc.w['수'] || 0,
         req: checkRequirement(u, rp)
       });
@@ -346,6 +363,7 @@
     resolvedProfile: resolvedProfile,
     evaluate: evaluate,
     mathRole: mathRole,
+    areaRole: areaRole,
     LEVEL_NAME: LEVEL_NAME,
     SATAM: SATAM, GWATAM: GWATAM, MATH_TYPES: MATH_TYPES,
     units: function () { return UNITS; },
