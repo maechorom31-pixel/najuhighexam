@@ -121,12 +121,15 @@
   .rowbtn{
     font-family:inherit; font-size:13.5px; font-weight:600; color:var(--amber-ink);
     background:none; border:none; padding:0; cursor:pointer; text-align:left;
+    /* 띄어쓰기 없는 긴 학과명도 칸 안에서 접히게 한다. 아래 min-width가
+       한 글자씩 세로로 깨지는 것을 막는다. */
+    display:block; min-width:118px; overflow-wrap:break-word; overflow-wrap:anywhere;
   }
   .rowbtn:focus-visible{outline:2px solid var(--amber-ink); outline-offset:2px;}
   /* 좁은 화면에서만 이름 아래에 컷·판정을 덧붙인다 */
   .mini{
     display:none; margin-top:2px; font-size:11.5px; font-weight:400; color:var(--muted);
-    font-variant-numeric:tabular-nums; white-space:nowrap;
+    font-variant-numeric:tabular-nums; line-height:1.45; overflow-wrap:normal;
   }
 
   /* 판정: 색 대신 5칸 게이지 + 글자 */
@@ -234,6 +237,11 @@
     thead th:nth-child(2),tbody tr.main td:nth-child(2){min-width:74px;}
     td.major,th:nth-child(3){max-width:172px;}
     .mini{display:block;}
+  }
+  @media (max-width:480px){
+    /* 폰에서는 고정 칸이 화면의 절반을 먹어 학과 이름을 가린다.
+       담기 단추 고정을 풀고, 판단에 필요한 값은 이름 아래 줄로 대신한다. */
+    thead th:last-child,tbody tr.main td:last-child{position:static; box-shadow:none;}
   }
   @media (max-width:640px){
     .wrap{padding:24px 16px 48px;}
@@ -352,8 +360,8 @@
   </footer>
 </div>
 
-<script src="jeongsi-engine.js?v=5"></script>
-<script src="jeongsi-app.js?v=5"></script>
-<script src="jeongsi-ui.js?v=5"></script>
+<script src="jeongsi-engine.js?v=6"></script>
+<script src="jeongsi-app.js?v=6"></script>
+<script src="jeongsi-ui.js?v=6"></script>
 </body>
 </html>
